@@ -733,7 +733,8 @@ class Fieldmap:
     
     def fft_at_s(self, spos, r, order=5, sample_points=256, radius=0.01):
         """
-        Calculate the multipole coefficient using a fourier transform of the field values along a circle
+        Calculate the multipole coefficient using a fourier transform of the field values along a circle.
+        This method will only give correct results when the coefficients are independent of s!
         :param spos: Longitudinal position at which to calculate the multipoles.
         :param r: Radius of the circle on which to sample the field values, best to be within GFR.
         :param order: Maximal order of the multipoles to be determined. Order = 1 must fit b1 only.
@@ -749,8 +750,46 @@ class Fieldmap:
         fm = self.interpolate_points(x, y, s, radius=radius)
         byibx = fm.src['By'] + 1j*fm.src['Bx']
 
-        coeffs = np.fft.fft(byibx)[:order] / sample_points
-        return coeffs / r**np.arange(order) * np.array([math.factorial(ii) for ii in range(order)])
+        dk = np.fft.fft(byibx)[:order] / sample_points
+        return dk / r**np.arange(order) * np.array([math.factorial(ii) for ii in range(order)])
+
+
+    def generalized_fft_at_s(self, spos, rmax, order=5, sample_points=256, radius=0.01):
+        
+        degree = order
+        nr = 10*degree
+        rr = np.linspace(rmax/nr, rmax, nr)
+
+        # Determine the set of dk for each r
+        N = order
+        dk = np.zeros((nr, N))
+        for i, r in enumerate(rr):
+            t = 2*np.pi / sample_points * np.arange(sample_points)
+            x = r * np.cos(t)
+            y = r * np.sin(t)
+            s = np.full_like(x, spos)
+            fm = self.interpolate_points(x, y, s, radius=radius)
+            byibx = fm.src['By'] + 1j*fm.src['Bx']
+
+            # Only real part needed for bn, for an this is the same but with imaginary part
+            dk[i] = np.fft.fft(byibx)[:N].real / sample_points  # For each r, this contains N Fouerier coefficients
+            #print(f"r={r:.3f}, bn={dk[i, :N] / r**np.arange(N) * np.array([math.factorial(ii) for ii in range(N)])}")
+        
+        # Fit a polynomial to each dk
+        params = np.zeros((N, degree+1))
+        for k in range(N):
+            dkt = np.concatenate([dk[::-1, k]*(-1)**k, dk[:, k]]) 
+            rvals = np.concatenate([-rr[::-1], rr])  # -0.2, -0.1, 0.1, 0.2 for example
+            params[k] = np.polyfit(rvals, dkt, degree)  # Fit a polynomial of given to the dk values as a function of r
+            
+        # Calculate coefficients, bn is sum of n-th derivatives of dk at x=0 
+        coeffs = np.zeros(order)
+        for n in range(order):  # coeffs[n] = b_{n+1} 
+            for k in range(N):
+                coeffs[n] += params[k, -(n+1)] * math.factorial(n)
+            
+        return coeffs
+        
 
     def s_multipoles(self, order, xmax=None, ax=None, mov_av=1, method="polynomial", radius=0.01, **kwargs):
         """
@@ -772,17 +811,26 @@ class Fieldmap:
         
         coeffs = np.zeros((len(svals), order))
         coeffsstd = np.zeros((len(svals), order))
+
         for i, spos in enumerate(svals):
             if method == "polynomial":
                 coeffs[i], coeffsstd[i] = self.fit_xprofile(0, spos, "By", order, xmax=xmax, radius=radius)
+
             elif method == "finite_difference":
                 coeffs[i], coeffsstd[i] = self.findif_xprofile(0, spos, "By", order, xmax=xmax, radius=radius)
+
             elif method == "fft":
                 if xmax is None:
                     xmax = np.max(abs(self.src['x']))
                 coeffs[i] = self.fft_at_s(spos, r=xmax/2, order=order, radius=radius).real
                 coeffsstd[i] = np.abs(coeffs[i] - self.fft_at_s(spos, r=xmax/4, order=order, radius=radius).real)
-        
+
+            elif method == "generalized_fft":
+                if xmax is None:
+                    xmax = np.max(abs(self.src['x']))
+                coeffs[i] = self.generalized_fft_at_s(spos, rmax=xmax, order=order, radius=radius)
+                coeffsstd[i] = np.abs(coeffs[i] - self.generalized_fft_at_s(spos, rmax=xmax/2, order=order+1, radius=radius)[:order])
+                
         for i in range(order):
             coeffs[:, i] = moving_average(coeffs[:, i], N=mov_av)
             coeffsstd[:, i] = moving_average(coeffsstd[:, i], N=mov_av)            
