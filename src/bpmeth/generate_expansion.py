@@ -541,7 +541,7 @@ class FieldExpansion:
         return h
         
 
-    def create_fieldmap(self, xarr, yarr, sarr, filename):
+    def create_fieldmap(self, xarr, yarr, sarr, filename=None):
         """
         Create a fieldmap of the magnetic field components Bx, By, Bs on a grid defined by xarr, yarr, zarr and save it as a csv file.
         :param xarr: 1D array of x coordinates.
@@ -560,7 +560,7 @@ class FieldExpansion:
         Bs = Bsfun(X, Y, S)
         
         if filename is None:
-            return Fieldmap(X, Y, S, Bx, By, Bs)
+            return Fieldmap(np.array([X.flat, Y.flat, S.flat, Bx.flat, By.flat, Bs.flat]))
 
         with open(f'{filename}.csv', 'w') as file:
             file.write('"X", "Y", "S", "Bx", "By", "BS"\n')
