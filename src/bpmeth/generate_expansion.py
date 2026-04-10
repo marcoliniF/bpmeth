@@ -560,7 +560,7 @@ class FieldExpansion:
         Bs = Bsfun(X, Y, S)
         
         if filename is None:
-            return Fieldmap(np.array([X.flat, Y.flat, S.flat, Bx.flat, By.flat, Bs.flat]))
+            return Fieldmap(np.array([X.flat, Y.flat, S.flat, Bx.flat, By.flat, Bs.flat]).T)
 
         with open(f'{filename}.csv', 'w') as file:
             file.write('"X", "Y", "S", "Bx", "By", "BS"\n')
