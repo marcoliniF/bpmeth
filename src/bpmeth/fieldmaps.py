@@ -148,6 +148,105 @@ class Fieldmap:
         data = np.array([x.flatten(), y.flatten(), s.flatten(), dst['Bx'], dst['By'], dst['Bs']]).T
 
         return Fieldmap(data)
+
+
+    def FS_frame_plot(self, rho, phi, field, radius=0.01, xmax=0.01, ymax=0.01, nx=51, ny=10, ns=101, smax=1):
+        """
+        Plot the fieldmap in Frenet-Serret coordinates, but represented in global frame.
+        :param rho: Bending radius of the magnet.
+        :param phi: Angle of the magnet in radians. Related to the magnetic length by l_magn = rho * phi.
+        :param field: Which field component to plot, can be "Bx", "By", or "Bs".
+        :param radius: Interpolation radius, default 0.01. See interpolate_points for its function.
+        :param xmax: Maximal x value to take into account in the plot, best to exclude any region outside of GFR.
+        :param ymax: Maximal y value to take into account in the plot, best to exclude any region outside of GFR.
+        :param nx: Number of points in the x direction for the plot.
+        :param ny: Number of points in the y direction for the plot.
+        :param ns: Number of points in the s direction for the plot.
+        :param smax: Maximal s value to take into account in the plot, best to exclude any region outside of GFR. 
+        Given as fraction of l_magn
+        :return: The fieldmap objects interpolated at FS points.
+        """
+        
+        l_magn = rho*phi
+
+        # ----- Straight part at negative s -----
+        s, x, y = np.meshgrid(np.linspace(-l_magn*smax, -l_magn/2, ns//4), 
+                              np.linspace(-xmax, xmax, nx), 
+                              np.linspace(-ymax, ymax, ny))
+        X_ns = (rho + x) * np.cos(phi/2) + (s+l_magn/2) * np.sin(phi/2) 
+        Y_ns = y
+        Z_ns = -(rho + x) * np.sin(phi/2) + (s+l_magn/2) * np.cos(phi/2)
+
+        # ----- Bent part -----
+        s, x, y = np.meshgrid(np.linspace(-l_magn/2, l_magn/2, ns//2), 
+                              np.linspace(-xmax, xmax, nx), 
+                              np.linspace(-ymax, ymax, ny))
+        X_b = np.cos(s/rho) * (rho + x) 
+        Y_b = y
+        Z_b = np.sin(s/rho) * (rho + x)
+        
+        # ----- Straight part at positive s -----
+        s, x, y = np.meshgrid(np.linspace(l_magn/2, l_magn*smax, ns//4), 
+                              np.linspace(-xmax, xmax, nx), 
+                              np.linspace(-ymax, ymax, ny))
+        X_ps = (rho + x) * np.cos(phi/2) - (s-l_magn/2) * np.sin(phi/2)
+        Y_ps = y
+        Z_ps = (rho + x) * np.sin(phi/2) + (s-l_magn/2) * np.cos(phi/2)
+        
+        X = np.concatenate((X_ns.flatten(), X_b.flatten(), X_ps.flatten()))
+        Y = np.concatenate((Y_ns.flatten(), Y_b.flatten(), Y_ps.flatten()))
+        Z = np.concatenate((Z_ns.flatten(), Z_b.flatten(), Z_ps.flatten()))
+        fm = self.interpolate_points(X, Y, Z, radius=radius)
+        fm.plot(field)
+        return fm
+
+    
+    def FS_frame_plot_cilindrical(self, rho, phi, field, radius=0.01, rmax=0.01, ntheta=32, nr=5, ns=101):
+        """
+        Plot the fieldmap in Frenet-Serret coordinates, but represented in global frame, using cylindrical coordinates.
+        :param rho: Bending radius of the magnet.
+        :param phi: Angle of the magnet in radians. Related to the magnetic length by l_magn = rho * phi.
+        :param field: Which field component to plot, can be "Bx", "By", or "Bs".
+        :param radius: Interpolation radius, default 0.01. See interpolate_points for its function.
+        :param rmax: Maximal radial distance from the reference trajectory to take into account in the plot, best to exclude any region outside of GFR.
+        :param ntheta: Number of points in the angular direction for the plot.
+        :param nr: Number of points in the radial direction for the plot.
+        :param ns: Number of points in the s direction for the plot.
+        :return: The fieldmap objects interpolated at FS points. 
+        """
+        
+        l_magn = rho*phi
+
+        # ----- Straight part at negative s -----
+        s, theta, r = np.meshgrid(np.linspace(-l_magn, -l_magn/2, ns//4), 
+                                np.linspace(0, 2*np.pi, ntheta+1)[:-1], 
+                                np.linspace(0, rmax, nr))
+        X_ns = (rho + r*np.cos(theta)) * np.cos(phi/2) + (s+l_magn/2) * np.sin(phi/2) 
+        Y_ns = r*np.sin(theta)
+        Z_ns = -(rho + r*np.cos(theta)) * np.sin(phi/2) + (s+l_magn/2) * np.cos(phi/2)
+
+        # ----- Bent part -----
+        s, theta, r = np.meshgrid(np.linspace(-l_magn/2, l_magn/2, ns//2), 
+                                np.linspace(0, 2*np.pi, ntheta), 
+                                np.linspace(0, rmax, nr))
+        X_b = np.cos(s/rho) * (rho + r*np.cos(theta)) 
+        Y_b = r*np.sin(theta)
+        Z_b = np.sin(s/rho) * (rho + r*np.cos(theta))
+        
+        # ----- Straight part at positive s -----
+        s, theta, r = np.meshgrid(np.linspace(l_magn/2, l_magn, ns//4),
+                                np.linspace(0, 2*np.pi, ntheta), 
+                                np.linspace(0, rmax, nr))
+        X_ps = (rho + r*np.cos(theta)) * np.cos(phi/2) - (s-l_magn/2) * np.sin(phi/2)
+        Y_ps = r*np.sin(theta)
+        Z_ps = (rho + r*np.cos(theta)) * np.sin(phi/2) + (s-l_magn/2) * np.cos(phi/2)
+        
+        X = np.concatenate((X_ns.flatten(), X_b.flatten(), X_ps.flatten()))
+        Y = np.concatenate((Y_ns.flatten(), Y_b.flatten(), Y_ps.flatten()))
+        Z = np.concatenate((Z_ns.flatten(), Z_b.flatten(), Z_ps.flatten()))
+        fm = self.interpolate_points(X, Y, Z, radius=radius)
+        fm.plot(field)
+        return fm
     
 
     def calc_FS_coords(self, xFS, yFS, sFS, rho, phi, radius=0.01):
@@ -396,7 +495,7 @@ class Fieldmap:
 
         # Create new dataframe to update geometry and not only the coordinates of the points, 
         # needed for interpolation later on, easier than updating it in place.        
-        data = np.array([x_translated, y_translated, z_translated, Bx, By, Bs]).T
+        data = np.array([x_translated, y_translated, s_translated, Bx, By, Bs]).T
     
         return Fieldmap(data)
 
@@ -481,7 +580,7 @@ class Fieldmap:
         self.src["Bs"] = self.src["Bs"] * scalefactor
 
         
-    def xprofile(self, ypos, spos, field, ax=None, xmax=None):
+    def xprofile(self, ypos, spos, field, ax=None, xmax=None, nx=51, radius=0.01):
         """ 
         Return the field values along the horizontal direction at the given vertical and longitudinal positions.
         :param ypos: Vertical position at which to extract the horizontal profile.
@@ -489,20 +588,26 @@ class Fieldmap:
         :param field: Which field component to extract, can be "Bx", "By", or "Bs".
         :param ax: If given, plot the horizontal profile on the given matplotlib axis.
         :param xmax: Maximal x value to take into account in the profile, best to exclude any region outside of GFR.
+        :param nx: Number of points in the x direction for interpolation if the asked position is not present in the data.
+        :param radius: Radius for interpolation if the asked position is not present in the data.
         :return: Tuple of (x, fieldvals), where x is the array of x coordinates and fieldvals is the array of 
         corresponding field values for the specified field component.
         """ 
-        
-        assert ypos in self.src['y'] and spos in self.src['s'], "These values are not present in the data"
+
         if xmax is None:
             xmax = np.max(abs(self.src['x']))
-        mask = (self.src['y'] == ypos) & (self.src['s'] == spos) & (abs(self.src['x']) <= xmax)
+
+        xvals = np.linspace(-xmax, xmax, nx)
+        X, Y, S = np.meshgrid(xvals, ypos, spos)
+        fm = self.interpolate_points(X, Y, S, radius=radius)
+
+        mask = (fm.src['y'] == ypos) & (fm.src['s'] == spos) & (abs(fm.src['x']) <= xmax)
+        x = fm.src['x'][mask]
+        fieldvals = fm.src[field][mask]
         
-        x = self.src['x'][mask]
-        fieldvals = self.src[field][mask]
         
         if ax is not None:
-            ax.plot(x, fieldvals, label=f"y={ypos}, s={spos}")
+            ax.scatter(x, fieldvals, marker=".", label=f"y={ypos}, s={spos}")
             ax.set_xlabel('x')
             ax.set_ylabel(field)
             ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
@@ -528,7 +633,7 @@ class Fieldmap:
         fieldvals = self.src[field][mask]
 
         if ax is not None:
-            ax.plot(s, fieldvals, label=f"x={xpos}, y={ypos}")
+            ax.scatter(s, fieldvals, marker=".", label=f"x={xpos}, y={ypos}")
             ax.set_xlabel('s')
             ax.set_ylabel(field)
             ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
@@ -536,7 +641,7 @@ class Fieldmap:
         return s, fieldvals
         
         
-    def fit_xprofile(self, ypos, spos, field, order, ax=None, xmax=None, radius=0.01):
+    def fit_xprofile(self, ypos, spos, field, order, ax=None, xmax=None, radius=0.01, data=True):
         """
         Fit the field values along the horizontal direction at the given vertical and longitudinal positions 
         with a polynomial of the given order, and return the coefficients of the fit.
@@ -547,21 +652,16 @@ class Fieldmap:
         :param ax: If given, plot profile and fit with error region.
         :param xmax: Maximal x value to take into account in fit, best to exclude any region outside of GFR.
         :param radius: Radius for interpolation if the asked position is not present in the data.
+        :param data: If datapoints also have to be plotted, or only the fit.
         :return: Tuple of (coeffs, coeffsstd), where coeffs is the array of coefficients of the fit, 
         starting with the highest order, and coeffsstd is the array of standard deviations of the coefficients, 
         estimated from fits with different polynomial orders. 
         """
         
-        if ypos in self.src['y'] and spos in self.src['s']:
-            x, fieldvals = self.xprofile(ypos, spos, field, ax=ax, xmax=xmax)
-        else:
-            xvals = np.linspace(-xmax, xmax, 51)
-            X, Y, S = np.meshgrid(xvals, ypos, zpos)
-            fm = self.interpolate_points(X, Y, S, radius=radius)
-            x, fieldvals = fm.xprofile(ypos, spos, field, ax=ax, xmax=xmax)
+        x, fieldvals = self.xprofile(ypos, spos, field, xmax=xmax, radius=radius)
 
         paramslist = np.array([np.polyfit(x, fieldvals, order-1+j)[j:] for j in range(5)])
-        param = np.mean(paramslist, axis=0)
+        params = np.mean(paramslist, axis=0)
         paramsstd = np.std(paramslist, axis=0)
         # Parameters from fit are given starting by highest order, ex. if order = 2, we have [b2, b1] and we want to return [b1, b2/2]
         coeffslist = [paramslist[:, order-1-i] * math.factorial(i) for i in range(order)]
@@ -569,17 +669,129 @@ class Fieldmap:
         coeffsstd = np.std(coeffslist, axis=1)
         
         if ax:
-            ax.scatter(x, fieldvals, label="data")
-            xx = np.linspace(x.min(), x.max(), 100)
-            ax.plot(xx, np.polyval(params+paramsstd, xx), label="fit+std", color="gray")
-            ax.plot(xx, np.polyval(params-paramsstd, xx), label="fit-std", color="gray")
-            ax.plot(xx, np.polyval(params, xx), label="fit", color="black")
-            ax.legend()
+            if data:
+                ax.scatter(x, fieldvals, label="data", marker=".")
+            xx = np.linspace(-xmax, xmax, 100)
+            ax.plot(xx, np.polyval(params, xx), color="orange", label="polynomial fit")
+            yymin = np.polyval(params, xx) - np.polyval(paramsstd, abs(xx))
+            yymax = np.polyval(params, xx) + np.polyval(paramsstd, abs(xx))
+            ax.fill_between(xx, yymin, yymax, color="orange", alpha=0.5)
             
         return coeffs, coeffsstd
 
 
-    def s_multipoles(self, order, xmax=None, ax=None, mov_av=1, **kwargs):
+    def findif_xprofile(self, ypos, spos, field, order, ax=None, xmax=0.05, radius=0.01, data=True):
+        """
+        Use finite differences to determine multipole coefficients at the given vertical and longitudinal positions 
+        with a polynomial of the given order, and return the coefficients of the fit.
+        :param ypos: Vertical position at which to fit the horizontal profile.
+        :param spos: Longitudinal position at which to fit the horizontal profile.
+        :param field: Which vectorfield to fit, typically By for normal multipoles.
+        :param order: Maximal order to be deterimed in the fit. Order = 1 must fit b1 only, so a polynomial of degree = order - 1.
+        :param ax: If given, plot profile and fit with error region.
+        :param xmax: Maximal x value to take into account in fit, best to exclude any region outside of GFR.
+        :param radius: Radius for interpolation if the asked position is not present in the data.
+        :param data: If datapoints also have to be plotted, or only the fit.
+        :return: (coeffs), coeffs is the array of coefficients of the finite differences, starting with the highest order.
+        Errors have to be added.
+        """
+
+        x, fieldvals = self.xprofile(ypos, spos, field, xmax=xmax, nx=2*order-1, radius=radius)
+
+        coeffs = np.zeros(order)
+        center = np.where(x==0)[0]
+        h = x[center+1] - x[center-1]
+        for n in range(order):
+            for j in range(n+1):
+                ind = int(center+2*(n/2-j))  # h means two indices
+                coeffs[n] += 1/(h**n) * (-1)**j * math.factorial(n)/math.factorial(n-j)/math.factorial(j) * fieldvals[ind]
+            
+        # Error estimation: use as error the difference with step size h and h/2
+        coeffsstd = -coeffs
+        xd, fieldvalsd = self.xprofile(ypos, spos, field, xmax=xmax, nx=4*order-1, radius=radius)
+        center = np.where(xd==0)[0]
+        h = xd[center+1] - xd[center-1]
+        for n in range(order):
+            for j in range(n+1):
+                ind = int(center+2*(n/2-j))
+                coeffsstd[n] += 1/(h**n) * (-1)**j * math.factorial(n)/math.factorial(n-j)/math.factorial(j) * fieldvalsd[ind]
+        coeffsstd = np.abs(coeffsstd)
+            
+        if ax:
+            params = [coeffs[order-1-i] / math.factorial(order-1-i) for i in range(order)]
+            paramsstd = [coeffsstd[order-1-i] / math.factorial(order-1-i) for i in range(order)]
+            if data:
+                ax.scatter(x, fieldvals, label="data", marker=".")
+            xx = np.linspace(-xmax, xmax, 100)
+            ax.plot(xx, np.polyval(params, xx), color="red", label="finite difference fit")                
+            yymin = np.polyval(params, xx) - np.polyval(paramsstd, abs(xx))
+            yymax = np.polyval(params, xx) + np.polyval(paramsstd, abs(xx))
+            ax.fill_between(xx, yymin, yymax, color="red", alpha=0.5)
+
+        return coeffs, coeffsstd
+
+    
+    def fft_at_s(self, spos, r, order=5, sample_points=256, radius=0.01):
+        """
+        Calculate the multipole coefficient using a fourier transform of the field values along a circle.
+        This method will only give correct results when the coefficients are independent of s!
+        :param spos: Longitudinal position at which to calculate the multipoles.
+        :param r: Radius of the circle on which to sample the field values, best to be within GFR.
+        :param order: Maximal order of the multipoles to be determined. Order = 1 must fit b1 only.
+        :param sample_points: Number of points to sample on the circle for the Fourier transform.
+        :param radius: Radius for interpolation of datapoints.
+        :return: Array of multipole coefficients.
+        """
+
+        t = 2*np.pi / sample_points * np.arange(sample_points)
+        x = r * np.cos(t)
+        y = r * np.sin(t)
+        s = np.full_like(x, spos)
+        fm = self.interpolate_points(x, y, s, radius=radius)
+        byibx = fm.src['By'] + 1j*fm.src['Bx']
+
+        dk = np.fft.fft(byibx)[:order] / sample_points
+        return dk / r**np.arange(order) * np.array([math.factorial(ii) for ii in range(order)])
+
+
+    def generalized_fft_at_s(self, spos, rmax, order=5, sample_points=256, radius=0.01):
+        
+        degree = order
+        nr = 10*degree
+        rr = np.linspace(rmax/nr, rmax, nr)
+
+        # Determine the set of dk for each r
+        N = order
+        dk = np.zeros((nr, N))
+        for i, r in enumerate(rr):
+            t = 2*np.pi / sample_points * np.arange(sample_points)
+            x = r * np.cos(t)
+            y = r * np.sin(t)
+            s = np.full_like(x, spos)
+            fm = self.interpolate_points(x, y, s, radius=radius)
+            byibx = fm.src['By'] + 1j*fm.src['Bx']
+
+            # Only real part needed for bn, for an this is the same but with imaginary part
+            dk[i] = np.fft.fft(byibx)[:N].real / sample_points  # For each r, this contains N Fouerier coefficients
+            #print(f"r={r:.3f}, bn={dk[i, :N] / r**np.arange(N) * np.array([math.factorial(ii) for ii in range(N)])}")
+        
+        # Fit a polynomial to each dk
+        params = np.zeros((N, degree+1))
+        for k in range(N):
+            dkt = np.concatenate([dk[::-1, k]*(-1)**k, dk[:, k]]) 
+            rvals = np.concatenate([-rr[::-1], rr])  # -0.2, -0.1, 0.1, 0.2 for example
+            params[k] = np.polyfit(rvals, dkt, degree)  # Fit a polynomial of given to the dk values as a function of r
+            
+        # Calculate coefficients, bn is sum of n-th derivatives of dk at x=0 
+        coeffs = np.zeros(order)
+        for n in range(order):  # coeffs[n] = b_{n+1} 
+            for k in range(N):
+                coeffs[n] += params[k, -(n+1)] * math.factorial(n)
+            
+        return coeffs
+        
+
+    def s_multipoles(self, order, xmax=None, ax=None, mov_av=1, method="polynomial", radius=0.01, **kwargs):
         """
         Normal multipoles as a function of s, by fitting the horizontal profile at each s position and taking the coefficients of the fit.
         :param order: Maximal order of the multipoles to be determined. Order = 1 must fit b1 only, so a polynomial of degree = order - 1.
@@ -587,6 +799,10 @@ class Fieldmap:
         :param ax: If given, plot the multipoles as a function of s on the given matplotlib axis, with error bars corresponding to 
         the standard deviation of the coefficients estimated from fits with different polynomial orders.
         :param mov_av: If greater than 1, apply a moving average with the given width to the multipole coefficients as a function of s, to smooth out noise.
+        :param method: Method to determine the multipole coefficients, either "polynomial" for fitting a polynomial of different orders 
+        and taking the mean and std of the coefficients, or "finite_difference" for using finite differences to determine the coefficients 
+        and using the difference between step sizes as error estimation.
+        :param radius: Radius for interpolation of datapoints.
         :param **kwargs: Additional parameters to pass to the ax.errorbar function when plotting, such as color or label.
         :return: Tuple of (svals, coeffs, coeffsstd), where svals is the array of s coordinates at which the multipoles were determined.        
         """
@@ -595,16 +811,34 @@ class Fieldmap:
         
         coeffs = np.zeros((len(svals), order))
         coeffsstd = np.zeros((len(svals), order))
+
         for i, spos in enumerate(svals):
-            coeffs[i], coeffsstd[i] = self.fit_xprofile(0, spos, "By", order, xmax=xmax)
-        
+            if method == "polynomial":
+                coeffs[i], coeffsstd[i] = self.fit_xprofile(0, spos, "By", order, xmax=xmax, radius=radius)
+
+            elif method == "finite_difference":
+                coeffs[i], coeffsstd[i] = self.findif_xprofile(0, spos, "By", order, xmax=xmax, radius=radius)
+
+            elif method == "fft":
+                if xmax is None:
+                    xmax = np.max(abs(self.src['x']))
+                coeffs[i] = self.fft_at_s(spos, r=xmax/2, order=order, radius=radius).real
+                coeffsstd[i] = np.abs(coeffs[i] - self.fft_at_s(spos, r=xmax/4, order=order, radius=radius).real)
+
+            elif method == "generalized_fft":
+                if xmax is None:
+                    xmax = np.max(abs(self.src['x']))
+                coeffs[i] = self.generalized_fft_at_s(spos, rmax=xmax, order=order, radius=radius)
+                coeffsstd[i] = np.abs(coeffs[i] - self.generalized_fft_at_s(spos, rmax=xmax/2, order=order+1, radius=radius)[:order])
+                
         for i in range(order):
             coeffs[:, i] = moving_average(coeffs[:, i], N=mov_av)
             coeffsstd[:, i] = moving_average(coeffsstd[:, i], N=mov_av)            
         
         if ax is not None:
             for i in range(order):
-                ax.errorbar(svals, coeffs[:,i], yerr=coeffsstd[:,i], label=f"b{i+1}", **kwargs)
+                ax.plot(svals, coeffs[:,i], label=f"b{i+1}", **kwargs)
+                ax.fill_between(svals, coeffs[:,i]-coeffsstd[:,i], coeffs[:,i]+coeffsstd[:,i], alpha=0.5, **kwargs)
         return svals, coeffs, coeffsstd
 
 
