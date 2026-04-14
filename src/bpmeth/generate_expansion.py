@@ -299,10 +299,10 @@ class FieldExpansion:
         
         if plot_a:
             for i, aa in enumerate(self.a):
-                ax.plot(ss, [sp.sympify(aa).subs(self.s, sval).evalf() for sval in ss], label=f"a_{i+1}")
+                ax.plot(ss, [sp.sympify(aa).subs(self.s, sval).evalf() for sval in ss], label=f"a{i+1}")
         if plot_b:
             for i, bb in enumerate(self.b):
-                ax.plot(ss, [sp.sympify(bb).subs(self.s, sval).evalf() for sval in ss], label=f"b_{i+1}")
+                ax.plot(ss, [sp.sympify(bb).subs(self.s, sval).evalf() for sval in ss], label=f"b{i+1}")
         if plot_bs:
             ax.plot(ss, [sp.sympify(self.bs).subs(self.s, sval).evalf() for sval in ss], label="bs")
         ax.legend()
@@ -541,7 +541,7 @@ class FieldExpansion:
         return h
         
 
-    def create_fieldmap(self, xarr, yarr, sarr, filename):
+    def create_fieldmap(self, xarr, yarr, sarr, filename=None):
         """
         Create a fieldmap of the magnetic field components Bx, By, Bs on a grid defined by xarr, yarr, zarr and save it as a csv file.
         :param xarr: 1D array of x coordinates.
@@ -560,7 +560,7 @@ class FieldExpansion:
         Bs = Bsfun(X, Y, S)
         
         if filename is None:
-            return Fieldmap(X, Y, S, Bx, By, Bs)
+            return Fieldmap(np.array([X.flat, Y.flat, S.flat, Bx.flat, By.flat, Bs.flat]).T)
 
         with open(f'{filename}.csv', 'w') as file:
             file.write('"X", "Y", "S", "Bx", "By", "BS"\n')
