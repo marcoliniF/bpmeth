@@ -5,6 +5,7 @@ import math
 import scipy as sc
 import matplotlib.pyplot as plt
 from .poly_fit import fit_segment, plot_fit
+from .harmonics import *
 
 
 def Enge(x, *params):
@@ -268,18 +269,13 @@ class Fieldmap:
         l_magn = rho*phi
         
         # ----- Straight part at negative s -----
-        xarr = xFS
-        yarr = yFS
         sarr = sFS[sFS<-l_magn/2] + l_magn/2
-        
-        s, x, y = np.meshgrid(sarr, xarr, yarr)
-        x_ns = x
-        y_ns = y
+        s, x_ns, y_ns = np.meshgrid(sarr, xFS, yFS)
         s_ns = s - l_magn/2
 
-        X_ns = (rho + x) * np.cos(phi/2) + s * np.sin(phi/2)  # Global coordinates
-        Y_ns = y
-        Z_ns = -(rho + x) * np.sin(phi/2) + s * np.cos(phi/2)
+        X_ns = (rho + x_ns) * np.cos(phi/2) + s * np.sin(phi/2)  # Global coordinates
+        Y_ns = y_ns
+        Z_ns = -(rho + x_ns) * np.sin(phi/2) + s * np.cos(phi/2)
 
         XYZ = np.array([X_ns.flatten(), Y_ns.flatten(), Z_ns.flatten()]).T
         dst = pv.PolyData(XYZ).interpolate(self.src, radius=radius)
@@ -288,18 +284,13 @@ class Fieldmap:
         Bs_ns = -dst["Bx"]*np.sin(phi/2) + dst["Bs"]*np.cos(phi/2)
 
         # ----- Bent part -----
-        xarr = xFS
-        yarr = yFS
         sarr = sFS[abs(sFS)<l_magn/2]
-        
-        s, x, y = np.meshgrid(sarr, xarr, yarr)
-        x_b = x
-        y_b = y
+        s, x_b, y_b = np.meshgrid(sarr, xFS, yFS)
         s_b = s
 
-        X_b = np.cos(s/rho) * (rho + x)  # Global coordinates
-        Y_b = y
-        Z_b = np.sin(s/rho) * (rho + x)
+        X_b = np.cos(s/rho) * (rho + x_b)  # Global coordinates
+        Y_b = y_b
+        Z_b = np.sin(s/rho) * (rho + x_b)
 
         XYZ = np.array([X_b.flatten(), Y_b.flatten(), Z_b.flatten()]).T
         dst = pv.PolyData(XYZ).interpolate(self.src, radius=radius)
@@ -308,18 +299,97 @@ class Fieldmap:
         Bs_b = dst["Bx"]*np.sin(s.flatten()/rho) + dst["Bs"]*np.cos(s.flatten()/rho)
 
         # ----- Straight part at positive s -----
-        xarr = xFS
-        yarr = yFS
         sarr = sFS[sFS>l_magn/2] - l_magn/2
-        
-        s, x, y = np.meshgrid(sarr, xarr, yarr)
-        x_ps = x
-        y_ps = y
+        s, x_ps, y_ps = np.meshgrid(sarr, xFS, yFS)
         s_ps = s + l_magn/2
 
-        X_ps = (rho + x) * np.cos(phi/2) - s * np.sin(phi/2)  # Global coordinates
-        Y_ps = y
-        Z_ps = (rho + x) * np.sin(phi/2) + s * np.cos(phi/2)
+        X_ps = (rho + x_ps) * np.cos(phi/2) - s * np.sin(phi/2)  # Global coordinates
+        Y_ps = y_ps
+        Z_ps = (rho + x_ps) * np.sin(phi/2) + s * np.cos(phi/2)
+
+        XYZ = np.array([X_ps.flatten(), Y_ps.flatten(), Z_ps.flatten()]).T
+        dst = pv.PolyData(XYZ).interpolate(self.src, radius=radius)
+        Bx_ps = dst["Bx"]*np.cos(phi/2) - dst["Bs"]*np.sin(phi/2)
+        By_ps = dst["By"]
+        Bs_ps = dst["Bx"]*np.sin(phi/2) + dst["Bs"]*np.cos(phi/2)
+
+        # Combine all
+        x = np.concatenate((x_ns.flatten(), x_b.flatten(), x_ps.flatten()))
+        y = np.concatenate((y_ns.flatten(), y_b.flatten(), y_ps.flatten()))
+        s = np.concatenate((s_ns.flatten(), s_b.flatten(), s_ps.flatten()))
+
+        Bx = np.concatenate((Bx_ns.flatten(), Bx_b.flatten(), Bx_ps.flatten()))
+        By = np.concatenate((By_ns.flatten(), By_b.flatten(), By_ps.flatten()))
+        Bs = np.concatenate((Bs_ns.flatten(), Bs_b.flatten(), Bs_ps.flatten()))
+
+        data = np.array([x, y, s, Bx, By, Bs]).T
+
+        return Fieldmap(data)
+
+    def calc_FS_coords_cylindrical(self, rFS, thetaFS, sFS, rho, phi, radius=0.01):
+        """
+        Determine the fieldmap in a frame consisting of a straight piece up to -l_magn/2, then a bent piece up to l_magn/2, 
+        then again a straight piece. Assumes that the original fieldmap is in global frame XYS, 
+        with (0,0,0) the center of curvature (and hence typically outside the magnetic fieldmap).
+        Y is vertical, the magnet rotated so that a typical magnet is symmetric around S=0 and located 
+        at positive X (if the curvature radius is positive), XYS right handed.
+        The points are given in circles around the x=y=0 axis.
+        :param rFS: Array of r positions in cylindrical Frenet-Serret coordinates.
+        :param thetaFS: Array of theta positions in cylindrical Frenet-Serret coordinates.
+        :param sFS: Array of s positions in Frenet-Serret coordinates.
+        :param rho: Bending radius of the magnet.
+        :param phi: Angle of the magnet in radians. Related to the magnetic length by l_magn = rho * phi.
+        :param radius: Interpolation radius, default 0.01. See interpolate_points for its function.
+        :return: Fieldmap object in Frenet-Serret coordinates.
+        """
+
+        l_magn = rho*phi
+        
+        # ----- Straight part at negative s -----
+        sarr = sFS[sFS<-l_magn/2] + l_magn/2
+        
+        s, r, theta = np.meshgrid(sarr, rFS, thetaFS)
+        x_ns = r*np.cos(theta)
+        y_ns = r*np.sin(theta)
+        s_ns = s - l_magn/2
+
+        X_ns = (rho + x_ns) * np.cos(phi/2) + s * np.sin(phi/2)  # Global coordinates
+        Y_ns = y_ns
+        Z_ns = -(rho + x_ns) * np.sin(phi/2) + s * np.cos(phi/2)
+
+        XYZ = np.array([X_ns.flatten(), Y_ns.flatten(), Z_ns.flatten()]).T
+        dst = pv.PolyData(XYZ).interpolate(self.src, radius=radius)
+        Bx_ns = dst["Bx"]*np.cos(phi/2) + dst["Bs"]*np.sin(phi/2)
+        By_ns = dst["By"]
+        Bs_ns = -dst["Bx"]*np.sin(phi/2) + dst["Bs"]*np.cos(phi/2)
+
+        # ----- Bent part -----
+        sarr = sFS[abs(sFS)<l_magn/2]
+        s, r, theta = np.meshgrid(sarr, rFS, thetaFS)
+        x_b = r*np.cos(theta)
+        y_b = r*np.sin(theta)
+        s_b = s
+
+        X_b = np.cos(s/rho) * (rho + x_b)  # Global coordinates
+        Y_b = y_b
+        Z_b = np.sin(s/rho) * (rho + x_b)
+
+        XYZ = np.array([X_b.flatten(), Y_b.flatten(), Z_b.flatten()]).T
+        dst = pv.PolyData(XYZ).interpolate(self.src, radius=radius)
+        Bx_b = dst["Bx"]*np.cos(s.flatten()/rho) - dst["Bs"]*np.sin(s.flatten()/rho)
+        By_b = dst["By"]
+        Bs_b = dst["Bx"]*np.sin(s.flatten()/rho) + dst["Bs"]*np.cos(s.flatten()/rho)
+
+        # ----- Straight part at positive s -----
+        sarr = sFS[sFS>l_magn/2] - l_magn/2
+        s, r, theta = np.meshgrid(sarr, rFS, thetaFS)
+        x_ps = r*np.cos(theta)
+        y_ps = r*np.sin(theta)
+        s_ps = s + l_magn/2
+
+        X_ps = (rho + x_ps) * np.cos(phi/2) - s * np.sin(phi/2)  # Global coordinates
+        Y_ps = y_ps
+        Z_ps = (rho + x_ps) * np.sin(phi/2) + s * np.cos(phi/2)
 
         XYZ = np.array([X_ps.flatten(), Y_ps.flatten(), Z_ps.flatten()]).T
         dst = pv.PolyData(XYZ).interpolate(self.src, radius=radius)
@@ -699,7 +769,7 @@ class Fieldmap:
         x, fieldvals = self.xprofile(ypos, spos, field, xmax=xmax, nx=2*order-1, radius=radius)
 
         coeffs = np.zeros(order)
-        center = np.where(x==0)[0]
+        center = np.where(x==0)[0][0]
         h = x[center+1] - x[center-1]
         for n in range(order):
             for j in range(n+1):
@@ -709,7 +779,7 @@ class Fieldmap:
         # Error estimation: use as error the difference with step size h and h/2
         coeffsstd = -coeffs
         xd, fieldvalsd = self.xprofile(ypos, spos, field, xmax=xmax, nx=4*order-1, radius=radius)
-        center = np.where(xd==0)[0]
+        center = np.where(xd==0)[0][0]
         h = xd[center+1] - xd[center-1]
         for n in range(order):
             for j in range(n+1):
@@ -731,65 +801,76 @@ class Fieldmap:
         return coeffs, coeffsstd
 
     
-    def fft_at_s(self, spos, r, order=5, sample_points=256, radius=0.01):
+    def fft_at_s(self, spos, r, order=5, N=256, radius=0.01):
         """
         Calculate the multipole coefficient using a fourier transform of the field values along a circle.
         This method will only give correct results when the coefficients are independent of s!
         :param spos: Longitudinal position at which to calculate the multipoles.
         :param r: Radius of the circle on which to sample the field values, best to be within GFR.
         :param order: Maximal order of the multipoles to be determined. Order = 1 must fit b1 only.
-        :param sample_points: Number of points to sample on the circle for the Fourier transform.
+        :param N: Number of points to sample on the circle for the Fourier transform.
         :param radius: Radius for interpolation of datapoints.
         :return: Array of multipole coefficients.
         """
 
-        t = 2*np.pi / sample_points * np.arange(sample_points)
+        t = 2*np.pi / N * np.arange(N)
         x = r * np.cos(t)
         y = r * np.sin(t)
         s = np.full_like(x, spos)
         fm = self.interpolate_points(x, y, s, radius=radius)
         byibx = fm.src['By'] + 1j*fm.src['Bx']
 
-        dk = np.fft.fft(byibx)[:order] / sample_points
-        return dk / r**np.arange(order) * np.array([math.factorial(ii) for ii in range(order)])
+        dk = np.fft.fft(byibx)[:order] / N / r**np.arange(order) 
+        return dk * np.array([math.factorial(ii) for ii in range(order)])
 
 
-    def generalized_fft_at_s(self, spos, rmax, order=5, sample_points=256, radius=0.01):
+    def harmonic_analysis_at_s(self, spos, rmin, rmax, nr=11, ntheta=256, order=5, radius=0.01):
+        """
+        Calculate the multipole coefficient using a harmonic analysis of the field values along a circle,
+        also for s-dependent fields and curvature.
+        :param spos: Longitudinal position at which to calculate the multipoles.
+        :param rmin: Minimal radius of the circle on which to sample the field values, best to be within GFR.
+        :param rmax: Maximal radius of the circle on which to sample the field values, best to be within GFR.
+        :param nr: Number of points in the radial direction for sampling the field values.
+        :param ntheta: Number of points to sample on the circle for the Fourier transform.
+        :param order: Maximal order of the multipoles to be determined. Order = 1 must fit b1 only.
+        :param radius: Radius for interpolation of datapoints.
+        """
         
-        degree = order
-        nr = 10*degree
-        rr = np.linspace(rmax/nr, rmax, nr)
+        ByiBx = lambda x, y : self.interpolate_points(x, y, np.full_like(x, spos), radius=radius).src['By'] + 1j*self.interpolate_points(x, y, np.full_like(x, spos), radius=radius).src['Bx']
+        dkl = harmonics(ByiBx, nk=order, rmin=rmin, rmax=rmax, nr=nr, ntheta=ntheta)
+        bnian = calc_coeffs(dkl)
 
-        # Determine the set of dk for each r
-        N = order
-        dk = np.zeros((nr, N))
-        for i, r in enumerate(rr):
-            t = 2*np.pi / sample_points * np.arange(sample_points)
-            x = r * np.cos(t)
-            y = r * np.sin(t)
-            s = np.full_like(x, spos)
-            fm = self.interpolate_points(x, y, s, radius=radius)
-            byibx = fm.src['By'] + 1j*fm.src['Bx']
+        return bnian
 
-            # Only real part needed for bn, for an this is the same but with imaginary part
-            dk[i] = np.fft.fft(byibx)[:N].real / sample_points  # For each r, this contains N Fouerier coefficients
-            #print(f"r={r:.3f}, bn={dk[i, :N] / r**np.arange(N) * np.array([math.factorial(ii) for ii in range(N)])}")
+    def s_harmonics(self, order, rmin, rmax, nr=11, ntheta=256, ax=None, radius=0.01):
+        """
+        Calculate the multipole coefficients as a function of s using harmonic analysis, for s-dependent fields and curvature.
+        :param order: Maximal order of the multipoles to be determined. Order = 1 must fit b1 only.
+        :param rmin: Minimal radius of the circle on which to sample the field values, best to be within GFR.
+        :param rmax: Maximal radius of the circle on which to sample the field values, best to be within GFR.
+        :param nr: Number of points in the radial direction for sampling the field values.
+        :param ntheta: Number of points to sample on the circle for the Fourier transform.
+        :param ax: If given, plot the multipoles as a function of s on the given matplotlib axis.
+        :param radius: Radius for interpolation of datapoints.
+        :return: Tuple of (svals, coeffs, coeffsstd), where svals is the array of s coordinates at which the multipoles were determined, 
+        coeffs is the array of multipole coefficients as a function of s and coeffsstd is an estimate of the errors.
+        """
+
+        svals = np.unique(self.src['s'])
         
-        # Fit a polynomial to each dk
-        params = np.zeros((N, degree+1))
-        for k in range(N):
-            dkt = np.concatenate([dk[::-1, k]*(-1)**k, dk[:, k]]) 
-            rvals = np.concatenate([-rr[::-1], rr])  # -0.2, -0.1, 0.1, 0.2 for example
-            params[k] = np.polyfit(rvals, dkt, degree)  # Fit a polynomial of given to the dk values as a function of r
+        coeffs = np.zeros((len(svals), order))
+        coeffsstd = np.zeros((len(svals), order))
+        for i, spos in enumerate(svals):
+            coeffs[i] = self.harmonic_analysis_at_s(spos, rmin=rmin, rmax=rmax, nr=nr, ntheta=ntheta, order=order, radius=radius).real
+            coeffsstd[i] = np.abs(coeffs[i] - self.harmonic_analysis_at_s(spos, rmin=rmin, rmax=rmax, nr=nr, ntheta=ntheta, order=order+1, radius=radius)[:order].real)
+
+        if ax is not None:
+            for i in range(order):
+                ax.plot(svals, coeffs[:,i], label=f"b{i+1}")
+                ax.fill_between(svals, coeffs[:,i]-coeffsstd[:,i], coeffs[:,i]+coeffsstd[:,i], alpha=0.5)
             
-        # Calculate coefficients, bn is sum of n-th derivatives of dk at x=0 
-        coeffs = np.zeros(order)
-        for n in range(order):  # coeffs[n] = b_{n+1} 
-            for k in range(N):
-                coeffs[n] += params[k, -(n+1)] * math.factorial(n)
-            
-        return coeffs
-        
+        return svals, coeffs, coeffsstd
 
     def s_multipoles(self, order, xmax=None, ax=None, mov_av=1, method="polynomial", radius=0.01, **kwargs):
         """
@@ -825,11 +906,6 @@ class Fieldmap:
                 coeffs[i] = self.fft_at_s(spos, r=xmax/2, order=order, radius=radius).real
                 coeffsstd[i] = np.abs(coeffs[i] - self.fft_at_s(spos, r=xmax/4, order=order, radius=radius).real)
 
-            elif method == "generalized_fft":
-                if xmax is None:
-                    xmax = np.max(abs(self.src['x']))
-                coeffs[i] = self.generalized_fft_at_s(spos, rmax=xmax, order=order, radius=radius)
-                coeffsstd[i] = np.abs(coeffs[i] - self.generalized_fft_at_s(spos, rmax=xmax/2, order=order+1, radius=radius)[:order])
                 
         for i in range(order):
             coeffs[:, i] = moving_average(coeffs[:, i], N=mov_av)
