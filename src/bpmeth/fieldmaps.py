@@ -863,7 +863,7 @@ class Fieldmap:
         coeffsstd = np.zeros((len(svals), order))
         for i, spos in enumerate(svals):
             coeffs[i] = self.harmonic_analysis_at_s(spos, rmin=rmin, rmax=rmax, nr=nr, ntheta=ntheta, order=order, radius=radius).real
-            coeffsstd[i] = np.abs(coeffs[i] - self.harmonic_analysis_at_s(spos, rmin=rmin, rmax=rmax, nr=nr, ntheta=ntheta, order=order+1, radius=radius)[:order].real)
+            coeffsstd[i] = np.abs(coeffs[i] - self.harmonic_analysis_at_s(spos, rmin=rmin, rmax=rmax, nr=nr, ntheta=ntheta//2, order=order+1, radius=radius)[:order].real)
 
         if ax is not None:
             for i in range(order):
