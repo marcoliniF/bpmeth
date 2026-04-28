@@ -44,7 +44,6 @@ Bsvals += np.random.randn(*Bsvals.shape)*1e-8
 
 magn_fm = bpmeth.Fieldmap(np.array([xarr.flatten(), yarr.flatten(), sarr.flatten(), Bxvals.flatten(), Byvals.flatten(), Bsvals.flatten()]).T)
 
-# Method does not seem very numerically stable
 coeffs = magn_fm.harmonic_analysis_at_s(0, rmin=rmin, rmax=rmax, nr=nr, ntheta=ntheta, radius=0.001)
 for i, coeff in enumerate(coeffs):
     print(f"b{i} = {coeff.real:10.6f}, a{i} = {coeff.imag:10.6f}")

@@ -34,18 +34,19 @@ for method in ["polynomial", "finite_difference"]:
     plt.close()
 
 
-data = np.loadtxt("../../fieldmaps/ELENA/ELENA_fieldmap_cylindrical_morepoints.csv", skiprows=1, delimiter=",")[:, [0,1,2,7,8,9]]  # Fieldmap in Tesla
+data = np.loadtxt("../../fieldmaps/ELENA/ELENA_fieldmap_cylindrical.csv", skiprows=1, delimiter=",")[:, [0,1,2,7,8,9]]  # Fieldmap in Tesla
 Brho = B_dip_T * rho  # T.m
 magnet = bpmeth.Fieldmap(data)
 magnet.rescale(1/Brho)
 
-rmin, rmax, nr = 0.001, 0.03, 11
-ntheta = 32
+rmin, rmax, nr = 0.001, 0.03, 21
+ntheta = 64
 rFS = np.linspace(rmin, rmax, nr)
 thetaFS = np.arange(ntheta)/ntheta*2*np.pi
 
-radius = 0.02
-sFS = np.arange(-l_magn/2-0.1, l_magn/2+0.1, 0.01)
+radius = 0.001
+vapt = 0.076
+sFS = np.concatenate([np.arange(-l_magn/2 - 5*vapt, -l_magn/2, 0.001), np.arange(-l_magn/2, l_magn/2, 0.001), np.arange(l_magn/2, l_magn/2 + 5*vapt, 0.001)])
 magnet_FS_c = magnet.calc_FS_coords_cylindrical(rFS, thetaFS, sFS, rho, phi, radius=radius)
 
 fig, ax = plt.subplots()
