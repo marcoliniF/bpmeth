@@ -443,6 +443,46 @@ class FieldExpansion:
         plt.ylabel("x")
 
         plt.show()
+
+    def plot_crossection(self, S=0, ax=None, bmin=None, bmax=None, xmin=-0.5, xmax=0.5, xstep=0.01, ymin=-0.5, ymax=0.5, ystep=0.01, scale=50):
+        """
+        Plot the field components Bx, By as arrows, and Bs as color, as a function of x and y at the given s.
+        :param S: s coordinate at which to plot the field.
+        :param ax: Matplotlib axis to plot on. If None, a new figure and axis will be created.
+        :param bmin: Minimum value of the color scale for the field magnitude. If None, determined from the data.
+        :param bmax: Maximum value of the color scale for the field magnitude. If None, determined from the data.
+        :param xmin: Minimum value of x to plot.
+        :param xmax: Maximum value of x to plot.
+        :param xstep: Step size for x values to plot.
+        :param ymin: Minimum value of y to plot.
+        :param ymax: Maximum value of y to plot.
+        :param ystep: Step size for y values to plot.
+        :return: None
+        """
+        
+        X = np.arange(xmin, xmax, xstep)
+        Y = np.arange(ymin, ymax, ystep)
+        X, Y = np.meshgrid(X, Y)
+        
+        Bxfun, Byfun, Bsfun = self.get_Bfield()
+        
+        Bx = Bxfun(X, Y, S)
+        By = Byfun(X, Y, S)
+        Bs = Bsfun(X, Y, S)
+
+        bmagn = np.sqrt(Bx**2 + By**2)            
+        if bmin is None or bmax is None:
+            bmax = np.max([Bs.max(), -Bs.min()])
+
+        if ax is None:
+            fig, ax = plt.subplots()
+        ii = ax.imshow(Bs, extent=(ymin, ymax, xmin, xmax), origin='lower', vmin=-bmax, vmax=bmax, cmap='Spectral_r')
+        plt.colorbar(ii, label="Bs")
+        ax.quiver(X, Y, Bx, By, scale=scale, pivot='mid')
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        plt.show()
+        
         
     def plot_By(self, Y=0, ax=None, bmin=None, bmax=None, xmin=-2, xmax=2, xstep=0.05, smin=-3, smax=3, sstep=0.05):
         """
