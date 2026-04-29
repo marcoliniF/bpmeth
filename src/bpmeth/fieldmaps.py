@@ -838,7 +838,6 @@ class Fieldmap:
         """
         
         ByiBx = lambda x, y : self.interpolate_points(x, y, np.full_like(x, spos), radius=radius).src['By'] + 1j*self.interpolate_points(x, y, np.full_like(x, spos), radius=radius).src['Bx']
-        for nk in range(order, order+3)
         dkl = harmonics(ByiBx, nk=order, rmin=rmin, rmax=rmax, nr=nr, ntheta=ntheta)
         bnian = calc_coeffs(dkl)
 
