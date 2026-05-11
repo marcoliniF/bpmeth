@@ -121,12 +121,23 @@ class Fieldmap:
     
     
     def plot(self, field="By"):
-        """ 
-        Plot the fieldmap using pyvista, with the specified field component as the scalar field for coloring.
-        :param field: The field component to use for coloring the plot, can be "Bx", "By", or "Bs". Default is "By".
-        """
-        
-        self.src.plot(scalars=field)
+        import pyvista as pv
+        import numpy as np
+
+        pl = pv.Plotter()
+        pl.add_mesh(self.src, scalars=field)
+        pl.show_bounds(
+            grid="back",        # draws a bounding box with tick marks
+            location="outer",   # labels on outer edges
+            ticks="both",       # tick marks on both sides
+            minor_ticks=True,   # show minor ticks
+            xlabel="X (m)",     # customize axis labels as needed
+            ylabel="Y (m)",
+            zlabel="Z (m)",
+            
+        )
+        pl.show()
+
         
         
     def interpolate_points(self, x, y, s, radius=0.01):
