@@ -40,7 +40,7 @@ sk_sextupole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[1,2], xmin=xmin, xmax=
 ax[1,2].set_title("Skew sextupole", fontsize=14)
 
 plt.tight_layout()
-plt.savefig("Field_derivatives_body.png", dpi=300)
+#plt.savefig("Field_derivatives_body.png", dpi=300)
 plt.close()
 
 #######################
@@ -87,7 +87,7 @@ s_sk_sextupole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[1,2], xmin=xmin, xma
 ax[1,2].set_title("Skew sextupole fringe", fontsize=14)
 
 plt.tight_layout()
-plt.savefig("Field_derivatives_fringe.png", dpi=300)
+#plt.savefig("Field_derivatives_fringe.png", dpi=300)
 plt.close()
 
 #################
@@ -96,7 +96,7 @@ plt.close()
 
 fig, ax = plt.subplots(2, 3, figsize=(15, 10))
 
-h = 5
+h = 2
 
 dipole = bpmeth.FieldExpansion(b=(b1val, ), h=h)
 dipole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[0, 0], xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, xstep=xstep, ystep=ystep, scale=scale)
@@ -123,5 +123,60 @@ sk_sextupole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[1,2], xmin=xmin, xmax=
 ax[1,2].set_title("Curved skew sextupole", fontsize=14)
 
 plt.tight_layout()
-plt.savefig("Field_derivatives_curved.png", dpi=300)
+#plt.savefig("Field_derivatives_curved.png", dpi=300)
+plt.close()
+
+
+#########################
+# Comparison for dipole #
+#########################
+
+scale = 25
+
+fig, ax = plt.subplots(2, 2, figsize=(7.5, 6))
+
+dipole = bpmeth.FieldExpansion(b=(b1val, ))
+dipole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[0, 0], xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, xstep=xstep, ystep=ystep, scale=scale)
+ax[0,0].set_title("b1", fontsize=12)
+
+s_dipole = bpmeth.FieldExpansion(b=(b1fun, ))
+s_dipole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[0, 1], xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, xstep=xstep, ystep=ystep, scale=scale)
+ax[0,1].set_title("b1 with fringe", fontsize=12)
+
+h_dipole = bpmeth.FieldExpansion(b=(b1val, ), h=h)
+h_dipole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[1, 0], xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, xstep=xstep, ystep=ystep, scale=scale)
+ax[1,0].set_title("b1 with curvature", fontsize=12)
+
+sh_dipole = bpmeth.FieldExpansion(b=(b1fun, ), h=h)
+sh_dipole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[1, 1], xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, xstep=xstep, ystep=ystep, scale=scale)
+ax[1,1].set_title("b1 with curvature and fringe", fontsize=12)
+
+plt.tight_layout()
+#plt.savefig("Field_derivatives_dipole.png", dpi=300)
+plt.close()
+
+#############################
+# Comparison for quadrupole #
+#############################
+
+fig, ax = plt.subplots(2, 2, figsize=(7.5, 6))
+
+quadrupole = bpmeth.FieldExpansion(b=(0, b2val))
+quadrupole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[0, 0], xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, xstep=xstep, ystep=ystep, scale=scale)
+ax[0,0].set_title("b2", fontsize=12)
+
+s_quadrupole = bpmeth.FieldExpansion(b=(0, b2fun))
+s_quadrupole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[0, 1], xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, xstep=xstep, ystep=ystep, scale=scale)
+ax[0,1].set_title("b2 with fringe", fontsize=12)
+
+h_quadrupole = bpmeth.FieldExpansion(b=(0, b2val), h=h)
+h_quadrupole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[1, 0], xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, xstep=xstep, ystep=ystep, scale=scale)
+ax[1,0].set_title("b2 with curvature", fontsize=12)
+
+sh_quadrupole = bpmeth.FieldExpansion(b=(0, b2fun), h=h)
+sh_quadrupole.plot_crossection(bmin=bmin, bmax=bmax, ax=ax[1, 1], xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, xstep=xstep, ystep=ystep, scale=scale)
+ax[1,1].set_title("b2 with curvature and fringe", fontsize=12)
+
+plt.tight_layout()
+#plt.savefig("Field_derivatives_quadrupole.png", dpi=300)
 plt.close()
