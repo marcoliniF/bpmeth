@@ -73,8 +73,8 @@ class FieldExpansion:
         h = self.h
         nphi = self.nphi
         
-        phi0 = sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(a))) + sp.integrate(bs, s)
-        phi1 = sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(b)))        
+        phi0 = -sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(a))) + sp.integrate(bs, s)
+        phi1 = -sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(b)))        
         phiv = [phi0, phi1]
         for i in range(nphi-2):
             phiv.append(phinplus2(phiv[i], x, s, h).simplify())
@@ -113,7 +113,7 @@ class FieldExpansion:
         s = self.s
         phi = self.get_phi(subs=False)
         h = self.h
-        Bx, By, Bs = phi.diff(x), phi.diff(y), 1/(1+h*x)*phi.diff(s)
+        Bx, By, Bs = -phi.diff(x), -phi.diff(y), -1/(1+h*x)*phi.diff(s)
 
         if subs or lambdify:
             Bx = self.subs(Bx)
@@ -199,8 +199,8 @@ class FieldExpansion:
             maxpow = nphi
         
         # Determine the scalar potential 0 and 1 terms and transform to new frame
-        phi0 = sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(at))) + sp.integrate(bst, s)
-        phi1 = sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(bt))) 
+        phi0 = -sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(at))) + sp.integrate(bst, s)
+        phi1 = -sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(bt))) 
 
         ss, xx = sp.symbols("ss xx")  # Needed for simultaneous substitution
         
@@ -224,13 +224,13 @@ class FieldExpansion:
         a = []
         degree0 = 0 if phi0==0 else phi0.degree(x)
         for i in range(degree0+1):
-            a.append(phi0.coeff_monomial(x**(i+1)) * sp.factorial(i+1))
-        bs = phi0.coeff_monomial(x**0).diff(s)
+            a.append(-phi0.coeff_monomial(x**(i+1)) * sp.factorial(i+1))
+        bs = -phi0.coeff_monomial(x**0).diff(s)
 
         b = []
         degree1 = 0 if phi1==0 else phi1.degree(x)
         for i in range(degree1+1):
-            b.append(phi1.coeff_monomial(x**i) * sp.factorial(i))
+            b.append(-phi1.coeff_monomial(x**i) * sp.factorial(i))
                     
         return FieldExpansion(a=a, b=b, bs=bs, nphi=nphi)
             
@@ -252,8 +252,8 @@ class FieldExpansion:
         if maxpow is None:
             maxpow = nphi
             
-        phi0 = sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(at))) + sp.integrate(bst, s)
-        phi1 = sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(bt))) 
+        phi0 = -sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(at))) + sp.integrate(bst, s)
+        phi1 = -sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(bt))) 
 
         st = s - x*sp.tan(theta_E)
         print(f"Cutting magnet at angle {theta_E}...")
@@ -268,14 +268,14 @@ class FieldExpansion:
         a = []
         degree0 = 0 if phi0==0 else phi0.degree(x)
         for i in range(degree0+1):
-            a.append(phi0.coeff_monomial(x**(i+1)) * sp.factorial(i+1))
+            a.append(-phi0.coeff_monomial(x**(i+1)) * sp.factorial(i+1))
             
-        bs = phi0.coeff_monomial(x**0).diff(s)
+        bs = -phi0.coeff_monomial(x**0).diff(s)
 
         b = []
         degree1 = 0 if phi1==0 else phi1.degree(x)
         for i in range(degree1+1):
-            b.append(phi1.coeff_monomial(x**i) * sp.factorial(i))
+            b.append(-phi1.coeff_monomial(x**i) * sp.factorial(i))
             
         return FieldExpansion(a=a, b=b, bs=bs, nphi=nphi)
     
