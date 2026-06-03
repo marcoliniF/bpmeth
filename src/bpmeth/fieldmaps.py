@@ -94,6 +94,49 @@ class Fieldmap:
         self.src['y'] = self.data.T[1].T
         self.src['s'] = self.data.T[2].T
         
+    @classmethod
+    def from_cylindrical(cls, data, field_components="cartesian"):
+        """
+        Create a Fieldmap from cylindrical coordinates and field samples.
+
+        Parameters
+        ----------
+        data : ndarray, shape (N, 6)
+            Rows contain [r, theta, s, F1, F2, F3].
+            If field_components="cartesian", F1=Bx and F2=By.
+            If field_components="polar", F1=Br and F2=Btheta.
+        field_components : {"cartesian", "polar"}
+            How the two transverse components should be interpreted.
+
+        Returns
+        -------
+        Fieldmap
+            Fieldmap with Cartesian coordinates x, y and Cartesian field components Bx, By, Bs.
+        """
+        data = np.asarray(data)
+        if data.ndim != 2 or data.shape[1] != 6:
+            raise ValueError("cylindrical data must have shape (N, 6)")
+
+        r = data[:, 0]
+        theta = data[:, 1]
+        s_vals = data[:, 2]
+        x = r * np.cos(theta)
+        y = r * np.sin(theta)
+
+        if field_components == "cartesian":
+            Bx = data[:, 3]
+            By = data[:, 4]
+        elif field_components == "polar":
+            Br = data[:, 3]
+            Btheta = data[:, 4]
+            Bx = Br * np.cos(theta) - Btheta * np.sin(theta)
+            By = Br * np.sin(theta) + Btheta * np.cos(theta)
+        else:
+            raise ValueError("field_components must be 'cartesian' or 'polar'")
+
+        Bs = data[:, 5]
+        cart_data = np.column_stack([x, y, s_vals, Bx, By, Bs])
+        return cls(cart_data)
 
     def __add__(self, other):
         """
@@ -122,7 +165,6 @@ class Fieldmap:
     
     def plot(self, field="By"):
         import pyvista as pv
-        import numpy as np
 
         pl = pv.Plotter()
         pl.add_mesh(self.src, scalars=field)
@@ -131,9 +173,9 @@ class Fieldmap:
             location="outer",   # labels on outer edges
             ticks="both",       # tick marks on both sides
             minor_ticks=True,   # show minor ticks
-            xlabel="X (m)",     # customize axis labels as needed
-            ylabel="Y (m)",
-            zlabel="Z (m)",
+            xtitle="X (m)",     # customize axis labels as needed
+            ytitle="Y (m)",
+            ztitle="Z (m)",
             
         )
         pl.show()
@@ -834,27 +876,38 @@ class Fieldmap:
         dk = np.fft.fft(byibx)[:order] / N / r**np.arange(order) 
         return dk * np.array([math.factorial(ii) for ii in range(order)])
 
-
-    def harmonic_analysis_at_s(self, spos, rmin, rmax, nr=11, ntheta=256, order=5, radius=0.01):
+    def harmonic_analysis_at_s(self, s_index, rr, ntheta, ns, order=4 ):
         """
-        Calculate the multipole coefficient using a harmonic analysis of the field values along a circle,
-        also for s-dependent fields and curvature.
-        :param spos: Longitudinal position at which to calculate the multipoles.
-        :param rmin: Minimal radius of the circle on which to sample the field values, best to be within GFR.
-        :param rmax: Maximal radius of the circle on which to sample the field values, best to be within GFR.
-        :param nr: Number of points in the radial direction for sampling the field values.
-        :param ntheta: Number of points to sample on the circle for the Fourier transform.
-        :param order: Maximal order of the multipoles to be determined. Order = 1 must fit b1 only.
-        :param radius: Radius for interpolation of datapoints.
+        Perform harmonic analysis at a fixed longitudinal slice sindex.
+
+        The underlying fieldmap data must be arranged so that the transverse field
+        values in `self.src['Bx']` and `self.src['By']`  come are avaluated on a cylindrical grid 
+        and thus can be reshaped to `(len(rr), ntheta, ns)` in the same ordering used to build the cylindrical
+        sampling grid.
+
+        Parameters
+        ----------
+        sindex : int
+            Index along the longitudinal grid of the cylindrical sample.
+        rr : array_like
+            1D radial sample locations used to build the cylindrical grid.
+        ntheta : int
+            Number of angular samples per radius.
+        ns : int
+            Number of longitudinal samples in the grid.
+        order : int
+            Number of multipole orders to return.
+
+        Returns
+        -------
+        an, bn : ndarray
+            Skew and normal multipole coefficient arrays.
         """
-        
-        ByiBx = lambda x, y : self.interpolate_points(x, y, np.full_like(x, spos), radius=radius).src['By'] + 1j*self.interpolate_points(x, y, np.full_like(x, spos), radius=radius).src['Bx']
-        dkl = harmonics(ByiBx, nk=order, rmin=rmin, rmax=rmax, nr=nr, ntheta=ntheta)
-        bnian = calc_coeffs(dkl)
+        ByiBx = self.src['By'].reshape(len(rr), ntheta, ns) + 1j*self.src['Bx'].reshape(len(rr), ntheta, ns)
+        an, bn = LHongrid_nodiv_cheb(ByiBx, s_index=s_index, nk=order, rr=rr)
+        return an, bn
 
-        return bnian
-
-    def s_harmonics(self, order, rmin, rmax, nr=11, ntheta=256, ax=None, radius=0.01):
+    def s_harmonics(self, rr, ntheta, ns, order, ax=None, svals=None):
         """
         Calculate the multipole coefficients as a function of s using harmonic analysis, for s-dependent fields and curvature.
         :param order: Maximal order of the multipoles to be determined. Order = 1 must fit b1 only.
@@ -870,18 +923,25 @@ class Fieldmap:
 
         svals = np.unique(self.src['s'])
         
-        coeffs = np.zeros((len(svals), order))
-        coeffsstd = np.zeros((len(svals), order))
+        anofs = np.zeros((len(svals), order))
+        bnofs = np.zeros((len(svals), order))
+        anstd = np.zeros((len(svals), order))
+        bnstd = np.zeros((len(svals), order))
         for i, spos in enumerate(svals):
-            coeffs[i] = self.harmonic_analysis_at_s(spos, rmin=rmin, rmax=rmax, nr=nr, ntheta=ntheta, order=order, radius=radius).real
-            coeffsstd[i] = np.abs(coeffs[i] - self.harmonic_analysis_at_s(spos, rmin=rmin, rmax=rmax, nr=nr, ntheta=ntheta, order=order+1, radius=radius)[:order].real)
+            anofs[i], bnofs[i] = self.harmonic_analysis_at_s(s_index=i, rr=rr, ntheta=ntheta, ns=ns, order=order)
+            anstd[i] = np.abs(anofs[i] - self.harmonic_analysis_at_s(s_index=i, rr=rr, ntheta=ntheta, order=order+1))
+            bnstd[i] = np.abs(bnofs[i] - self.harmonic_analysis_at_s(s_index=i, rr=rr, ntheta=ntheta, order=order+1))
 
         if ax is not None:
             for i in range(order):
-                ax.plot(svals, coeffs[:,i], label=f"b{i+1}")
-                ax.fill_between(svals, coeffs[:,i]-coeffsstd[:,i], coeffs[:,i]+coeffsstd[:,i], alpha=0.5)
+                ax.plot(svals, bnofs[:,i], label=f"b{i+1}")
+                ax.fill_between(svals, bnofs[:,i]-bnstd[:,i], bnofs[:,i]+bnstd[:,i], alpha=0.5)
+                ax.title.set_text("Normal multipoles")
+                ax.set_xlabel("s")
+                ax.set_ylabel("bn")
+                ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
             
-        return svals, coeffs, coeffsstd
+        return svals, anofs, bnofs, anstd, bnstd
 
     def s_multipoles(self, order, xmax=None, ax=None, mov_av=1, method="polynomial", radius=0.01, **kwargs):
         """
