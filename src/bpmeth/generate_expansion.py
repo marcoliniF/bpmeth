@@ -90,7 +90,7 @@ class FieldExpansion:
             )
             laplval = lapl.subs({x: apperture, y: apperture, s: apperture}).evalf()
             if isinstance(laplval, float) or isinstance(laplval, sp.core.numbers.Float):
-                if laplval < tolerance:
+                if laplval > tolerance:
                     warnings.warn(f"More terms are needed in the expansion for aperture {apperture}m, the laplacian is {laplval}")
             else:
                 warnings.warn("The laplacian could not be evaluated")
