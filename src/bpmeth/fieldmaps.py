@@ -879,9 +879,8 @@ class Fieldmap:
     def harmonic_analysis_at_s(self, s_index, rr, ntheta, ns, order=4 ):
         """
         Perform harmonic analysis at a fixed longitudinal slice sindex.
-
         The underlying fieldmap data must be arranged so that the transverse field
-        values in `self.src['Bx']` and `self.src['By']`  come are avaluated on a cylindrical grid 
+        values in `self.src['Bx']` and `self.src['By']`  are avaluated on a cylindrical grid 
         and thus can be reshaped to `(len(rr), ntheta, ns)` in the same ordering used to build the cylindrical
         sampling grid.
 
@@ -909,28 +908,35 @@ class Fieldmap:
 
     def s_harmonics(self, rr, ntheta, ns, order, ax=None, svals=None):
         """
-        Calculate the multipole coefficients as a function of s using harmonic analysis, for s-dependent fields and curvature.
+        Calculate the multipole coefficients as a function of s using harmonic analysis, for s-dependent fields and curvature. 
+        The underlying fieldmap data must be arranged so that the transverse field
+        values in `self.src['Bx']` and `self.src['By']`  are avaluated on a cylindrical grid 
+        and thus can be reshaped to `(len(rr), ntheta, ns)` in the same ordering used to build the cylindrical
+        sampling grid.
+        Parameters
+        ----------        
         :param order: Maximal order of the multipoles to be determined. Order = 1 must fit b1 only.
-        :param rmin: Minimal radius of the circle on which to sample the field values, best to be within GFR.
-        :param rmax: Maximal radius of the circle on which to sample the field values, best to be within GFR.
-        :param nr: Number of points in the radial direction for sampling the field values.
+        :param rr: Array of radial positions in cylindrical coordinates for the harmonic analysis. Should be chosen to be within GFR.
         :param ntheta: Number of points to sample on the circle for the Fourier transform.
         :param ax: If given, plot the multipoles as a function of s on the given matplotlib axis.
-        :param radius: Radius for interpolation of datapoints.
-        :return: Tuple of (svals, coeffs, coeffsstd), where svals is the array of s coordinates at which the multipoles were determined, 
-        coeffs is the array of multipole coefficients as a function of s and coeffsstd is an estimate of the errors.
+        Returns
+        -------
+        :return: Tuple of (svals, anofs, bnofs, anstd, bnstd), where svals is the array of s coordinates at which the multipoles were determined, 
+        anofs and bnofs are the arrays of multipole coefficients as a function of s and anstd and bnstd are an estimate of their errors by taking a higher order analysis.
         """
-
         svals = np.unique(self.src['s'])
-        
+    
         anofs = np.zeros((len(svals), order))
         bnofs = np.zeros((len(svals), order))
+        anhigherorder = np.zeros((len(svals), order+1))
+        bnhigherorder = np.zeros((len(svals), order+1))
         anstd = np.zeros((len(svals), order))
         bnstd = np.zeros((len(svals), order))
         for i, spos in enumerate(svals):
             anofs[i], bnofs[i] = self.harmonic_analysis_at_s(s_index=i, rr=rr, ntheta=ntheta, ns=ns, order=order)
-            anstd[i] = np.abs(anofs[i] - self.harmonic_analysis_at_s(s_index=i, rr=rr, ntheta=ntheta, order=order+1))
-            bnstd[i] = np.abs(bnofs[i] - self.harmonic_analysis_at_s(s_index=i, rr=rr, ntheta=ntheta, order=order+1))
+            anhigherorder[i], bnhigherorder[i]= self.harmonic_analysis_at_s(s_index=i, rr=rr, ntheta=ntheta, ns=ns, order=order+1)
+            anstd[i] = np.abs(anofs[i] - anhigherorder[i,:order])
+            bnstd[i] = np.abs(bnofs[i] - bnhigherorder[i,:order])
 
         if ax is not None:
             for i in range(order):
