@@ -16,7 +16,7 @@ print("E [GeV]: ", Eref/1e9)
 gamma0 = Eref/xt.PROTON_MASS_EV
 beta0 = np.sqrt(1-1/gamma0**2)
 print("beta0: ", beta0)
-p0 =xt.Particles(x=np.linspace(-1e-3, 1e-3, 5), y=0, s=0,py=0.001, px=0.001, ptau=0, beta0=beta0, energy0=Eref, mass0=xt.PROTON_MASS_EV)
+p0 =xt.Particles(x=np.linspace(-1e-3, 1e-3, 5), y=0, s=0,py=0.01, px=np.linspace(0.01,-.01,5), ptau=0, beta0=beta0, energy0=Eref, mass0=xt.PROTON_MASS_EV)
 p_2 = p0.copy()
 
 A_straight= bpmeth.GeneralVectorPotential(h=0, b=b, a=a)
