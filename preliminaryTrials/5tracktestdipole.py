@@ -22,7 +22,7 @@ p_2 = p0.copy()
 A_straight= bpmeth.GeneralVectorPotential(h=0, b=b, a=a)
 H_straight = bpmeth.Hamiltonian(length=1, h=0, vectp=A_straight)
 
-sol_straight = H_straight.track(p_2, return_sol=True, ivp_opt= {"rtol":1e-10, "atol":1e-12},)
+sol_straight = H_straight.track(p_2, return_sol=True, ivp_opt= {"rtol":1e-10, "atol":1e-12})
 
 for ss in sol_straight:
     plt.plot(ss.t, ss.y[0])

@@ -30,7 +30,7 @@ poly_entry = poly_fit.poly_fit(
 # Plotting entry
 ss = np.linspace(0, 1, 100)
 plt.plot(ss, poly_fit.poly_val(poly_entry, ss))
-
+plt.show()
 # Entry
 b1 = 0.0  # k0
 b2 = poly_fit.poly_print(poly_entry, x="s")  # k1
@@ -68,7 +68,7 @@ poly = poly_fit.poly_fit(
 # plotting exit
 ss = np.linspace(0, 1, 100)
 plt.plot(ss, poly_fit.poly_val(poly, ss))
-
+plt.show()
 b1 = 0.0  # k0
 b2 = poly_fit.poly_print(poly, x="(-s)")  # k1
 b3 = 0.0  # k2
@@ -87,7 +87,7 @@ line.track(p0, turn_by_turn_monitor="ONE_TURN_EBE")
 data = line.record_last_track
 
 t = line.twiss4d(betx=1, bety=1, include_collective=True)
-print(t.betx)
+print("beta x", t.betx)
 
 
 # Track through the full element
@@ -101,9 +101,9 @@ print(f"s={data.s}")
 
 t = line.twiss4d(betx=30, bety=30, include_collective=True)
 
-print(t.s)
-print(t.betx)
-print(t.bety)
+print("s",t.s)
+print("beta x" , t.betx)
+print("beta y", t.bety)
 
 
 
