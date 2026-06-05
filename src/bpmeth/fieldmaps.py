@@ -875,14 +875,68 @@ class Fieldmap:
 
         dk = np.fft.fft(byibx)[:order] / N / r**np.arange(order) 
         return dk * np.array([math.factorial(ii) for ii in range(order)])
-
+    def interp_cartesian_to_cylindrical(cart_fieldmap, x_1d, y_1d, s_1d, rmin=0.001, rmax=0.4, nr=128,ntheta=256, ns=40):
+        """
+        Convert Cartesian fieldmap to cylindrical 
+        Parameters
+        ----------
+        cart_fieldmap : ndarray, shape (N, 6)
+            Fieldmap in Cartesian: [x, y, s, Bx, By, Bs]
+        x_1d, y_1d, s_1d : 1D arrays
+            Coordinate arrays from Cartesian grid
+        rmin, rmax, nr : float, int
+            Cylindrical radial range and resolution
+        ntheta : int
+            Azimuthal resolution
+        ns : int
+            Longitudinal resolution
+        Returns
+        -------
+        fields: list
+            list containing Bx, By, Bs
+        rr : ndarray
+            Radial coordinate array
+        s_cyl : ndarray
+            Cylindrical s coordinate array
+        """
+        # Resample Cartesian data onto cylindrical grid
+        rr = np.linspace(rmin, rmax, nr)
+        theta_1d = np.linspace(0.0, 2*np.pi, ntheta, endpoint=False)
+        s_cyl = s_1d
+        
+        R, TH, S = np.meslumn_stack([
+            X_query.ravel(),
+            Y_query.ravel(),
+            S.ravel(),
+        ])
+        # Interpolate field components
+        from scipy.interpolate import RegularGridInterpolator
+        
+        fields = {}
+        for i, name in enumerate(['Bx', 'By', 'Bs']):
+            F_3d = cart_fieldmap[:, 3 + i].reshape(shape_src)
+            interp = RegularGridInterpolator(
+                points=(x_1d, y_1d, s_1d), values=F_3d,
+                method='linear', bounds_error=False, fill_value=np.nan,
+            )
+            fields[name] = interp(query_pts).reshape(nr, ntheta, ns)hgrid(rr, theta_1d, s_cyl, indexing='ij')
+        
+        # Convert to Cartesian for interpolation
+        X_query = R * np.cos(TH)
+        Y_query = R * np.sin(TH)
+        
+        # Reshape for interpolation
+        shape_src = (len(x_1d), len(y_1d), len(s_1d))
+        query_pts = np.co
+        
+        return rr, theta_1d, fields
     def harmonic_analysis_at_s(self, s_index, rr, ntheta, ns, order=4 ):
         """
         Perform harmonic analysis at a fixed longitudinal slice sindex.
         The underlying fieldmap data must be arranged so that the transverse field
         values in `self.src['Bx']` and `self.src['By']`  are avaluated on a cylindrical grid 
         and thus can be reshaped to `(len(rr), ntheta, ns)` in the same ordering used to build the cylindrical
-        sampling grid.
+        sampling grid. The function interp_cartesian_to_cylindrical() can serve this purpose.
 
         Parameters
         ----------
