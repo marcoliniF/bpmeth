@@ -904,7 +904,15 @@ class Fieldmap:
         theta_1d = np.linspace(0.0, 2*np.pi, ntheta, endpoint=False)
         s_cyl = s_1d
         
-        R, TH, S = np.meslumn_stack([
+        R, TH, S = np.meshgrid(rr, theta_1d, s_cyl, indexing='ij')
+        
+        # Convert to Cartesian for interpolation
+        X_query = R * np.cos(TH)
+        Y_query = R * np.sin(TH)
+        
+        # Reshape for interpolation
+        shape_src = (len(x_1d), len(y_1d), len(s_1d))
+        query_pts = np.column_stack([
             X_query.ravel(),
             Y_query.ravel(),
             S.ravel(),
@@ -919,15 +927,7 @@ class Fieldmap:
                 points=(x_1d, y_1d, s_1d), values=F_3d,
                 method='linear', bounds_error=False, fill_value=np.nan,
             )
-            fields[name] = interp(query_pts).reshape(nr, ntheta, ns)hgrid(rr, theta_1d, s_cyl, indexing='ij')
-        
-        # Convert to Cartesian for interpolation
-        X_query = R * np.cos(TH)
-        Y_query = R * np.sin(TH)
-        
-        # Reshape for interpolation
-        shape_src = (len(x_1d), len(y_1d), len(s_1d))
-        query_pts = np.co
+            fields[name] = interp(query_pts).reshape(nr, ntheta, ns)
         
         return rr, theta_1d, fields
     def harmonic_analysis_at_s(self, s_index, rr, ntheta, ns, order=4 ):
