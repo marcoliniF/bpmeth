@@ -69,11 +69,11 @@ def mk_field(ab_order=4, sorder=3, h=True, nphi=5, out=None):
         h = "0"
     b = fd[1 : ab_order * 2 + 1 : 2]
     a = fd[2 : ab_order * 2 + 1 : 2]
-    vp = GeneralVectorPotential(bs=fd[0], b=b, a=a, hs=h, nphi=nphi)
+    vp = GeneralVectorPotential(bs=fd[0], b=b, a=a, h=h, nphi=nphi)
     Bx_sp, By_sp, Bs_sp = vp.get_Bfield(lambdify=False)
     Ax_sp, Ay_sp, As_sp = vp.get_A(lambdify=False)
     
-    HH = Hamiltonian(length=0, curv=h, vectp=vp)
+    HH = Hamiltonian(length=0, h=h, vectp=vp)
     xdot, ydot, taudot, pxdot, pydot, ptaudot = HH.get_vectorfield(lambdify=False)
     
     src = ["import numba"]

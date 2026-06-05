@@ -65,10 +65,11 @@ class Hamiltonian:
         return Ax(x, y, s), Ay(x, y, s), As(x, y, s)
 
 
-    def get_vectorfield(self, lambdify=True):
+    def get_vectorfield(self, lambdify=True, compile=True):
         """
         Determine the flow of the system from hamilton equations. Not the vector potential!
         :param lambdify (bool): Whether to return a numerical function or the symbolic expression of the vector field.
+        :param compile (bool): Whether to compile the numerical function with numba. Only relevant if lambdify is True.
         :return: Vector field of the system, either as a numerical function or as a symbolic expression.
         """
 
@@ -89,9 +90,11 @@ class Hamiltonian:
             qp = (x, y, tau, px, py, ptau)
             s = coords.s
             f = sp.lambdify((s, qp, beta0), qpdot, modules="numpy")
-
-            f_numba = nb.njit(f)
-            return f_numba
+            if compile:
+                f_numba = nb.njit(f)
+                return f_numba
+            else:
+                return f
         return qpdot
 
 

@@ -11,6 +11,7 @@ import sympy as sp
 import pandas as pd
 import scipy as sc
 import os
+import gzip
 
 
 
@@ -82,7 +83,7 @@ B_dip_T = 0.42881  # Design dipole field in Tesla
 # bpmeth dipole fieldmap model with splines #
 #############################################
 
-data = np.loadtxt("ELENA_fieldmap.csv", skiprows=1, delimiter=",")[:, [0,1,2,7,8,9]]  # Fieldmap in Tesla
+data = np.loadtxt(gzip.open("../../fieldmaps/ELENA/ELENA_fieldmap.csv.gz"), skiprows=1, delimiter=",")[:, [0,1,2,7,8,9]]  # Fieldmap in Tesla
 Brho = B_dip_T * rho  # T.m
 dipole = bpmeth.Fieldmap(data)
 dipole.rescale(1/Brho)

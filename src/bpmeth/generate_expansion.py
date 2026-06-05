@@ -73,8 +73,8 @@ class FieldExpansion:
         h = self.h
         nphi = self.nphi
         
-        phi0 = sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(a))) + sp.integrate(bs, s)
-        phi1 = sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(b)))        
+        phi0 = -sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(a))) + sp.integrate(bs, s)
+        phi1 = -sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(b)))        
         phiv = [phi0, phi1]
         for i in range(nphi-2):
             phiv.append(phinplus2(phiv[i], x, s, h).simplify())
@@ -90,7 +90,7 @@ class FieldExpansion:
             )
             laplval = lapl.subs({x: apperture, y: apperture, s: apperture}).evalf()
             if isinstance(laplval, float) or isinstance(laplval, sp.core.numbers.Float):
-                if laplval < tolerance:
+                if laplval > tolerance:
                     warnings.warn(f"More terms are needed in the expansion for aperture {apperture}m, the laplacian is {laplval}")
             else:
                 warnings.warn("The laplacian could not be evaluated")
@@ -113,7 +113,7 @@ class FieldExpansion:
         s = self.s
         phi = self.get_phi(subs=False)
         h = self.h
-        Bx, By, Bs = phi.diff(x), phi.diff(y), 1/(1+h*x)*phi.diff(s)
+        Bx, By, Bs = -phi.diff(x), -phi.diff(y), -1/(1+h*x)*phi.diff(s)
 
         if subs or lambdify:
             Bx = self.subs(Bx)
@@ -199,8 +199,8 @@ class FieldExpansion:
             maxpow = nphi
         
         # Determine the scalar potential 0 and 1 terms and transform to new frame
-        phi0 = sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(at))) + sp.integrate(bst, s)
-        phi1 = sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(bt))) 
+        phi0 = -sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(at))) + sp.integrate(bst, s)
+        phi1 = -sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(bt))) 
 
         ss, xx = sp.symbols("ss xx")  # Needed for simultaneous substitution
         
@@ -224,13 +224,13 @@ class FieldExpansion:
         a = []
         degree0 = 0 if phi0==0 else phi0.degree(x)
         for i in range(degree0+1):
-            a.append(phi0.coeff_monomial(x**(i+1)) * sp.factorial(i+1))
-        bs = phi0.coeff_monomial(x**0).diff(s)
+            a.append(-phi0.coeff_monomial(x**(i+1)) * sp.factorial(i+1))
+        bs = -phi0.coeff_monomial(x**0).diff(s)
 
         b = []
         degree1 = 0 if phi1==0 else phi1.degree(x)
         for i in range(degree1+1):
-            b.append(phi1.coeff_monomial(x**i) * sp.factorial(i))
+            b.append(-phi1.coeff_monomial(x**i) * sp.factorial(i))
                     
         return FieldExpansion(a=a, b=b, bs=bs, nphi=nphi)
             
@@ -252,8 +252,8 @@ class FieldExpansion:
         if maxpow is None:
             maxpow = nphi
             
-        phi0 = sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(at))) + sp.integrate(bst, s)
-        phi1 = sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(bt))) 
+        phi0 = -sum((an * x ** (n + 1) / sp.factorial(n + 1) for n, an in enumerate(at))) + sp.integrate(bst, s)
+        phi1 = -sum((bn * x**n / sp.factorial(n) for n, bn in enumerate(bt))) 
 
         st = s - x*sp.tan(theta_E)
         print(f"Cutting magnet at angle {theta_E}...")
@@ -268,14 +268,14 @@ class FieldExpansion:
         a = []
         degree0 = 0 if phi0==0 else phi0.degree(x)
         for i in range(degree0+1):
-            a.append(phi0.coeff_monomial(x**(i+1)) * sp.factorial(i+1))
+            a.append(-phi0.coeff_monomial(x**(i+1)) * sp.factorial(i+1))
             
-        bs = phi0.coeff_monomial(x**0).diff(s)
+        bs = -phi0.coeff_monomial(x**0).diff(s)
 
         b = []
         degree1 = 0 if phi1==0 else phi1.degree(x)
         for i in range(degree1+1):
-            b.append(phi1.coeff_monomial(x**i) * sp.factorial(i))
+            b.append(-phi1.coeff_monomial(x**i) * sp.factorial(i))
             
         return FieldExpansion(a=a, b=b, bs=bs, nphi=nphi)
     
@@ -443,6 +443,46 @@ class FieldExpansion:
         plt.ylabel("x")
 
         plt.show()
+
+    def plot_crossection(self, S=0, ax=None, bmin=None, bmax=None, xmin=-0.5, xmax=0.5, xstep=0.01, ymin=-0.5, ymax=0.5, ystep=0.01, scale=50):
+        """
+        Plot the field components Bx, By as arrows, and Bs as color, as a function of x and y at the given s.
+        :param S: s coordinate at which to plot the field.
+        :param ax: Matplotlib axis to plot on. If None, a new figure and axis will be created.
+        :param bmin: Minimum value of the color scale for the field magnitude. If None, determined from the data.
+        :param bmax: Maximum value of the color scale for the field magnitude. If None, determined from the data.
+        :param xmin: Minimum value of x to plot.
+        :param xmax: Maximum value of x to plot.
+        :param xstep: Step size for x values to plot.
+        :param ymin: Minimum value of y to plot.
+        :param ymax: Maximum value of y to plot.
+        :param ystep: Step size for y values to plot.
+        :return: None
+        """
+        
+        X = np.arange(xmin, xmax, xstep)
+        Y = np.arange(ymin, ymax, ystep)
+        X, Y = np.meshgrid(X, Y)
+        
+        Bxfun, Byfun, Bsfun = self.get_Bfield()
+        
+        Bx = Bxfun(X, Y, S)
+        By = Byfun(X, Y, S)
+        Bs = Bsfun(X, Y, S)
+
+        bmagn = np.sqrt(Bx**2 + By**2)            
+        if bmin is None or bmax is None:
+            bmax = np.max([Bs.max(), -Bs.min()])
+
+        if ax is None:
+            fig, ax = plt.subplots()
+        ii = ax.imshow(Bs, extent=(ymin, ymax, xmin, xmax), origin='lower', vmin=-bmax, vmax=bmax, cmap='Spectral_r')
+        plt.colorbar(ii, label="Bs")
+        ax.quiver(X, Y, Bx, By, scale=scale, pivot='mid')
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        plt.show()
+        
         
     def plot_By(self, Y=0, ax=None, bmin=None, bmax=None, xmin=-2, xmax=2, xstep=0.05, smin=-3, smax=3, sstep=0.05):
         """
@@ -541,7 +581,7 @@ class FieldExpansion:
         return h
         
 
-    def create_fieldmap(self, xarr, yarr, sarr, filename):
+    def create_fieldmap(self, xarr, yarr, sarr, filename=None):
         """
         Create a fieldmap of the magnetic field components Bx, By, Bs on a grid defined by xarr, yarr, zarr and save it as a csv file.
         :param xarr: 1D array of x coordinates.
@@ -560,7 +600,7 @@ class FieldExpansion:
         Bs = Bsfun(X, Y, S)
         
         if filename is None:
-            return Fieldmap(X, Y, S, Bx, By, Bs)
+            return Fieldmap(np.array([X.flat, Y.flat, S.flat, Bx.flat, By.flat, Bs.flat]).T)
 
         with open(f'{filename}.csv', 'w') as file:
             file.write('"X", "Y", "S", "Bx", "By", "BS"\n')
