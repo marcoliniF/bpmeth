@@ -34,7 +34,8 @@ def dklfitraw_nodiv_cheb(dkofrarray, rr, nk, nl):                               
     """
     Numerically stable Chebyshev version of dklfitraw_nodiv.
     Fits     f_k(r) ≈ Σ_l dkl[k,l] r^{|k|+2l}
-    internally uses a Chebyshev basis in x = r^2 for improved conditioning.
+    exactly like dklfitraw_nodiv, but internally uses a
+    Chebyshev basis in x = r^2 for improved conditioning.
     Returns
     -------
     dkl : complex ndarray, shape (2*nk+1, nl)
@@ -105,3 +106,7 @@ def LHongrid_nodiv_cheb(ByiBxongrid, s_index, nk, rr):
     an=bnianHAopt(dkl, nl,nk).imag
     bn=bnianHAopt(dkl, nl,nk).real
     return an, bn
+
+            
+        
+    

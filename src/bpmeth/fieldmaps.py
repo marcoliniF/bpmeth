@@ -875,7 +875,6 @@ class Fieldmap:
 
         dk = np.fft.fft(byibx)[:order] / N / r**np.arange(order) 
         return dk * np.array([math.factorial(ii) for ii in range(order)])
-
     def interp_cartesian_to_cylindrical(cart_fieldmap, x_1d, y_1d, s_1d, rmin=0.001, rmax=0.4, nr=128,ntheta=256, ns=40):
         """
         Convert Cartesian fieldmap to cylindrical 
@@ -931,7 +930,6 @@ class Fieldmap:
             fields[name] = interp(query_pts).reshape(nr, ntheta, ns)
         
         return rr, theta_1d, fields
-
     def harmonic_analysis_at_s(self, s_index, rr, ntheta, ns, order=4 ):
         """
         Perform harmonic analysis at a fixed longitudinal slice sindex.
@@ -939,7 +937,6 @@ class Fieldmap:
         values in `self.src['Bx']` and `self.src['By']`  are avaluated on a cylindrical grid 
         and thus can be reshaped to `(len(rr), ntheta, ns)` in the same ordering used to build the cylindrical
         sampling grid. The function interp_cartesian_to_cylindrical() can serve this purpose.
-
 
         Parameters
         ----------
@@ -1005,7 +1002,6 @@ class Fieldmap:
                 ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
             
         return svals, anofs, bnofs, anstd, bnstd
-
 
     def s_multipoles(self, order, xmax=None, ax=None, mov_av=1, method="polynomial", radius=0.01, **kwargs):
         """
