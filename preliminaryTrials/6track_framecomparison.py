@@ -47,7 +47,6 @@ phi_tmp = phi_curved.xreplace({
     x: xtmp,
     s: stmp
 })
-
 # substitute curved -> straight
 phi_straight = phi_tmp.xreplace({
     xtmp: sp.sqrt((x + 1/h)**2 + s**2) - 1/h,

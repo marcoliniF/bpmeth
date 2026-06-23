@@ -158,5 +158,5 @@ def plot_fit(ia,ib,x,y,pol,data=False, ax=None):
     if ax is None:
         fig, ax = plt.subplots()
     if data:
-       ax.plot(xd,yd,label='data', ls='', marker='o', color='black')
+       ax.plot(xd,yd,label='data', ls='', marker='.', color='black')
     ax.plot(xd,yf,label=poly_print(pol))
