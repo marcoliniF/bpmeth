@@ -39,5 +39,8 @@ plt.legend(fontsize=13)
 ax.set_xlabel("s [m]", fontsize=13)
 ax.set_ylabel(r"Multipole strength [1/m$^n$]", fontsize=13)
 plt.show()
+<<<<<<< HEAD
 >>>>>>> 3557e1dc55d8087048f90e341f17193427723c69
+=======
+>>>>>>> upstream/main
 

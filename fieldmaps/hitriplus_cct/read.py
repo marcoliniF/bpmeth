@@ -252,10 +252,7 @@ class Magnet:
         return closest_index
 
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 3557e1dc55d8087048f90e341f17193427723c69
     def fit_x(self, rho, rmax, spos, field, radius=0.01, n_r=200, degree=10, plot=False):
         """
         Fit a polynomial to the x distribution for y=0 and a given s using two methods
