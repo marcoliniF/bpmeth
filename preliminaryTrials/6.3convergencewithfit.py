@@ -453,7 +453,10 @@ print("now let's fit")
 ############################################## FIT #####################################################
 from scipy.optimize import curve_fit
 # Prepare data
+
+orders=[2, 3, 4, 5, 6, 7, 8, 9,10]
 orders_arr = np.array(orders)
+mean_rms_x_curved= [5.09329580e-07, 7.28402546e-08, 8.84989448e-09, 6.49769258e-10, 8.41810736e-11 ,5.33244687e-11 ,3.07666867e-11 ,2.86895711e-11, 2.86432182e-11]
 rmsx_arr = np.array(mean_rms_x_curved)  # Use the curved frame RMS values for fitting
 # Define multiple mathematical models
 def exp_decay(x, a, b):
@@ -613,3 +616,29 @@ print("\nThe plateau in the RMS curve (orders 7-12) indicates:")
 print("- Exponential decay dominates early (orders 2-6)")
 print("- Eventually hits a numerical precision floor")
 print("- Need a model that accounts for both regimes")
+#now let's fit the best model, the stretched exponential using only orders from 2 to 6
+# 3. Stretched exponential
+print("\n3. STRETCHED EXPONENTIAL: y = a * exp(-(b*x)^c)")
+try:
+    popt, pcov = curve_fit(stretched_exp, orders_arr[:5], rmsx_arr[:5], p0=[1e-4, 0.2, 0.7], maxfev=5000)
+    y_fit = stretched_exp(orders_arr[:5], *popt)
+    ss_res = np.sum((rmsx_arr[:5] - y_fit)**2)
+    ss_tot = np.sum((rmsx_arr[:5] - np.mean(rmsx_arr[:5]))**2)
+    r2 = 1 - (ss_res / ss_tot)
+    rmse = np.sqrt(np.mean((rmsx_arr[:5] - y_fit)**2))
+    results['Stretched Exp'] = {'r2': r2, 'rmse': rmse, 'params': popt, 'y_fit': y_fit}
+    print(f"   a = {popt[0]:.6e}, b = {popt[1]:.6f}, c = {popt[2]:.6f}")
+    print(f"   R² = {r2:.8f}, RMSE = {rmse:.6e}")
+except Exception as e:
+    print(f"   Failed: {e}")
+#plot the fit
+plt.figure(figsize=(8, 5))
+plt.semilogy(orders_arr[:5], rmsx_arr[:5], 'o', markersize=8)
+plt.semilogy(orders_arr[:5], y_fit, '-', linewidth=2.5, label=f"Stretched Exp Fit ($R^2={r2:.8f}$)", color='red')
+plt.xlabel('Maximum order', fontsize=11)
+plt.ylabel(r'RMS$_x$ over magnet [m]', fontsize=11)
+plt.title('Stretched Exponential Fit for Orders 2-6', fontsize=12, fontweight='bold')
+plt.grid(True, which='both', alpha=0.3)
+plt.legend(fontsize=10)
+plt.tight_layout()
+plt.show()
