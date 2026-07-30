@@ -189,7 +189,7 @@ class Fieldmap:
         :param y: Array of y coordinates of the points where the field should be interpolated.
         :param s: Array of s coordinates of the points where the field should be interpolated.
         :param radius: Interpolation radius, default 0.01. This parameter is very important for an 
-        accurate interpolation, it should be chosen based on the density of the original fieldmap points.
+        accurate interpolation, it should be chosen based on the density of the original fgit ieldmap points.
         Uses a Gaussian interpolation kernel, the radius adjusts this kernel. If the radius is too small, 
         the interpolation will be very noisy, if it is too large, the interpolation will be very smooth 
         and may miss important features of the fieldmap.
@@ -875,12 +875,13 @@ class Fieldmap:
 
         dk = np.fft.fft(byibx)[:order] / N / r**np.arange(order) 
         return dk * np.array([math.factorial(ii) for ii in range(order)])
-    def interp_cartesian_to_cylindrical(cart_fieldmap, x_1d, y_1d, s_1d, rmin=0.001, rmax=0.4, nr=128,ntheta=256, ns=40):
+    @staticmethod
+    def interp_cartesian_to_cylindrical(cart_fieldmap, x_1d, y_1d, s_1d, rmin=0.001, rmax=0.4, nr=128, ntheta=256, ns=40):
         """
         Convert Cartesian fieldmap to cylindrical 
         Parameters
         ----------
-        cart_fieldmap : ndarray, shape (N, 6)
+        cart_fieldmap : ndarray or Fieldmap
             Fieldmap in Cartesian: [x, y, s, Bx, By, Bs]
         x_1d, y_1d, s_1d : 1D arrays
             Coordinate arrays from Cartesian grid
@@ -892,24 +893,30 @@ class Fieldmap:
             Longitudinal resolution
         Returns
         -------
-        fields: list
-            list containing Bx, By, Bs
         rr : ndarray
             Radial coordinate array
-        s_cyl : ndarray
-            Cylindrical s coordinate array
+        theta_1d : ndarray
+            Azimuthal coordinate array
+        fields : dict
+            Dictionary containing Bx, By, Bs on the cylindrical grid
         """
+        if isinstance(cart_fieldmap, Fieldmap):
+            cart_fieldmap = cart_fieldmap.data
+        cart_fieldmap = np.asarray(cart_fieldmap)
+        if cart_fieldmap.ndim != 2 or cart_fieldmap.shape[1] < 6:
+            raise ValueError("cart_fieldmap must have shape (N, 6)")
+
         # Resample Cartesian data onto cylindrical grid
         rr = np.linspace(rmin, rmax, nr)
         theta_1d = np.linspace(0.0, 2*np.pi, ntheta, endpoint=False)
         s_cyl = s_1d
-        
+
         R, TH, S = np.meshgrid(rr, theta_1d, s_cyl, indexing='ij')
-        
+
         # Convert to Cartesian for interpolation
         X_query = R * np.cos(TH)
         Y_query = R * np.sin(TH)
-        
+
         # Reshape for interpolation
         shape_src = (len(x_1d), len(y_1d), len(s_1d))
         query_pts = np.column_stack([
@@ -917,9 +924,9 @@ class Fieldmap:
             Y_query.ravel(),
             S.ravel(),
         ])
-        # Interpolate field components
+
         from scipy.interpolate import RegularGridInterpolator
-        
+
         fields = {}
         for i, name in enumerate(['Bx', 'By', 'Bs']):
             F_3d = cart_fieldmap[:, 3 + i].reshape(shape_src)
@@ -928,7 +935,7 @@ class Fieldmap:
                 method='linear', bounds_error=False, fill_value=np.nan,
             )
             fields[name] = interp(query_pts).reshape(nr, ntheta, ns)
-        
+
         return rr, theta_1d, fields
     def harmonic_analysis_at_s(self, s_index, rr, ntheta, ns, order=4 ):
         """

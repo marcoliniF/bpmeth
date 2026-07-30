@@ -6,7 +6,7 @@ import sympy as sp
 import pandas as pd
 from scipy.interpolate import PchipInterpolator
 a_curved = [0,]
-b_curved = [2, 0.02]
+b_curved = [0.5, 0.02]
 h= b_curved[0]# considering normalization B/Brho=1/rho=h            =1. if checking for a drift
 print("curvature h[m^-1]: ", h, "radius of curvature [m]: ", 1/h)
 #I want to track protons of given kinetic energy
@@ -22,7 +22,7 @@ xinit=np.linspace(-1e-3, 1e-3, 5)
 print("xinit=",xinit)
 p0 =xt.Particles(x=xinit, y=0, s=0, py=np.linspace(0.005,-0.005,5), px=np.linspace(0.005,-0.005,5), ptau=0, beta0=beta0, energy0=Eref, mass0=xt.PROTON_MASS_EV)
 p_1 = p0.copy()
-nphi=5 #default is 5
+nphi=7 #default is 5
 print("nphi=",nphi)
 A_curved= bpmeth.GeneralVectorPotential(h=h, b=b_curved, a=a_curved, nphi=nphi)
 #bending_angle=0.3#rad, fix for all the tests
@@ -46,7 +46,7 @@ plt.legend()
 
 plt.show(block=False)
 plt.pause(0.001)
-expansion_curved = bpmeth.FieldExpansion(a=a_curved, b=b_curved, h=h, nphi=5)#, nphi=nphi)
+expansion_curved = bpmeth.FieldExpansion(a=a_curved, b=b_curved, h=h, nphi=nphi)#, nphi=nphi)
 phi_curved = expansion_curved.get_phi()
 #print("phi curved frame: ", phi_curved)
 #transform the scalar potential to curved frame using coordinate transformations
@@ -420,14 +420,9 @@ for ordx in orders:
     )
     results_fromcurved.append(out_fromcurved)
 
-df_conv = pd.DataFrame(
-    {
-        "maxordx": [r["maxordx"] for r in results],
-        "mean_dx_exit": [r["mean_dx_exit"] for r in results],
-        "mean_rms_x": [r["mean_rms_x"] for r in results],
-        "mean_rms_x_fromcurved": [r["mean_rms_x"] for r in results_fromcurved]
-    }
-)
+df_conv = pd.DataFrame({"maxordx": [r["maxordx"] for r in results], "mean_dx_exit": [r["mean_dx_exit"] for r in results],
+                         "mean_rms_x": [r["mean_rms_x"] for r in results],
+                        "mean_rms_x_fromcurved": [r["mean_rms_x"] for r in results_fromcurved]})
 
 
 mean_rms_x=df_conv["mean_rms_x"].values #mean_rms_x_h10= [1.30268505e-10 1.30248410e-10 1.30247907e-10 1.30247896e-10 1.30247895e-10 1.30247895e-10]
@@ -452,4 +447,4 @@ plt.grid(True)
 plt.ylabel('mean RMS x [m]')
 plt.yscale('log')
 plt.show(block=True)
-plt.pause(0.001)
+#plt.pause(0.001)
