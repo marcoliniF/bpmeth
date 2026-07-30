@@ -6,7 +6,7 @@ import sympy as sp
 import pandas as pd
 from scipy.interpolate import PchipInterpolator
 a_curved = [0,]
-b_curved = [1, 0.02]
+b_curved = [2, 0.02]
 h= b_curved[0]# considering normalization B/Brho=1/rho=h            =1. if checking for a drift
 print("curvature h[m^-1]: ", h, "radius of curvature [m]: ", 1/h)
 #I want to track protons of given kinetic energy
@@ -165,14 +165,6 @@ def compute_rms_curved_for_order(maxordx, sol_strfromphi, sol_curved, make_parti
         x_curv = sa.y[0]
 
         # --- transform straight-frame trajectory into curved frame ---
-        # from:
-        #   sbar = (rho + x) * sin(s/rho)
-        #   xbar = -rho + (rho + x) * cos(s/rho)
-        #
-        # one gets:
-        #   rho + x = sqrt((rho + xbar)^2 + sbar^2)
-        #   s = rho * atan2(sbar, rho + xbar)
-
         x_curv_from_str = np.sqrt((rho + xbar_str)**2 + sbar_str**2) - rho
         s_curv_from_str = rho * np.arctan2(sbar_str, rho + xbar_str)
 
@@ -190,14 +182,12 @@ def compute_rms_curved_for_order(maxordx, sol_strfromphi, sol_curved, make_parti
         idx_curv = np.argsort(s_curv)
         s_curv_sorted = s_curv[idx_curv]
         x_curv_sorted = x_curv[idx_curv]
-
         x_curv_common = PchipInterpolator(s_curv_sorted, x_curv_sorted)(s_common)
 
         # interpolate transformed straight->curved tracking
         idx_str = np.argsort(s_curv_from_str)
         s_from_str_sorted = s_curv_from_str[idx_str]
         x_from_str_sorted = x_curv_from_str[idx_str]
-
         x_from_str_common = PchipInterpolator(s_from_str_sorted, x_from_str_sorted)(s_common)
 
         # --- RMS difference in curved frame ---
@@ -208,6 +198,7 @@ def compute_rms_curved_for_order(maxordx, sol_strfromphi, sol_curved, make_parti
         print(f"[order {maxordx}] particle {i}: RMS_x_curved = {rms_x:.3e} m")
 
     mean_rms_x = np.mean(rms_x_list) if rms_x_list else np.nan
+    std_rms_x = np.std(rms_x_list, ddof=1) if len(rms_x_list) > 1 else np.nan
 
     if make_particle_plots:
         plt.figure()
@@ -227,6 +218,7 @@ def compute_rms_curved_for_order(maxordx, sol_strfromphi, sol_curved, make_parti
     return {
         "maxordx": maxordx,
         "mean_rms_x": mean_rms_x,
+        "std_rms_x": std_rms_x,
         "rms_x_list": rms_x_list,
     }
 orders = [2, 3, 4, 5, 6, 7, 8, 9,10]
@@ -412,7 +404,8 @@ for ordx in orders:
         make_particle_plots=False
     )
     results.append(out)
-    out_fromcurved= compute_rms_curved_for_order(
+
+    out_fromcurved = compute_rms_curved_for_order(
         maxordx=maxordx,
         sol_strfromphi=sol_strfromphi,
         sol_curved=sol_curved,
@@ -420,16 +413,19 @@ for ordx in orders:
     )
     results_fromcurved.append(out_fromcurved)
 
-df_conv = pd.DataFrame({"maxordx": [r["maxordx"] for r in results], "mean_dx_exit": [r["mean_dx_exit"] for r in results],
-                         "mean_rms_x": [r["mean_rms_x"] for r in results],
-                        "mean_rms_x_fromcurved": [r["mean_rms_x"] for r in results_fromcurved]})
 
+df_conv = pd.DataFrame({
+    "maxordx": [r["maxordx"] for r in results],
+    "mean_rms_x": [r["mean_rms_x"] for r in results],
+    "mean_rms_x_fromcurved": [r["mean_rms_x"] for r in results_fromcurved],
+    "std_rms_x": [r["std_rms_x"] for r in results_fromcurved],
+})
 
-mean_rms_x=df_conv["mean_rms_x"].values #mean_rms_x_h10= [1.30268505e-10 1.30248410e-10 1.30247907e-10 1.30247896e-10 1.30247895e-10 1.30247895e-10]
-print("mean_rms_x=",mean_rms_x)
+mean_rms_x = df_conv["mean_rms_x"].values
+print("mean_rms_x=", mean_rms_x)
 plt.figure()
 plt.plot(df_conv["maxordx"], mean_rms_x, "o", label=r"$\Delta x_{\mathrm{exit}}$")
-plt.title('Convergence for h='+str(h)+'/m seen from straight frame')
+plt.title('Convergence for h=' + str(h) + '/m seen from straight frame')
 plt.xlabel('# terms in the expansion')
 plt.grid(True)
 plt.ylabel('mean RMS $x_{straight}$ [m]')
@@ -439,6 +435,7 @@ plt.pause(0.001)
 
 mean_rms_x_curved=df_conv["mean_rms_x_fromcurved"].values #mean_rms_x_h10= [1.30268505e-10 1.30248410e-10 1.30247907e-10 1.30247896e-10 1.30247895e-10 1.30247895e-10]
 print("mean_rms_x curved=",mean_rms_x_curved)
+print("std rms_x curved between different particles=",df_conv["std_rms_x"].values)
 plt.figure()
 plt.plot(df_conv["maxordx"], mean_rms_x_curved, "o")
 plt.title('Convergence for h='+str(h)+'/m seen from curved frame')
