@@ -7,8 +7,8 @@ orders=np.linspace(2,10,9)
 rmsxh01=np.array([2.83431392e-13, 2.78742071e-13, 2.78744457e-13, 2.78744004e-13, 2.78743168e-13, 2.78743168e-13, 2.78743168e-13, 2.78743168e-13, 2.78743168e-13])
 stdrmsxh01=np.array([1.29231748e-13, 1.29959542e-13, 1.29937822e-13, 1.29937616e-13, 1.29936690e-13, 1.29936690e-13, 1.29936690e-13, 1.29936690e-13, 1.29936690e-13])
 
-# rmsxh08=np.array()
-# stdrmsxh08=np.array()
+rmsxh08=np.array([8.14331644e-08, 8.24056644e-09, 7.94103765e-10, 6.96670558e-11, 1.93953257e-11, 1.90332040e-11, 1.90422483e-11, 1.90439345e-11, 1.90442591e-11])
+stdrmsxh08=np.array([3.73272793e-09, 4.76806897e-10, 5.53074774e-11, 5.36749770e-12, 5.84944966e-13, 5.66479760e-13, 5.67850843e-13, 5.67999612e-13, 5.68026956e-13])
 
 rmsxh1=np.array([5.09329580e-07,7.28402546e-08, 8.84989448e-09, 6.49769258e-10, 8.41810736e-11, 5.33244687e-11, 3.07666867e-11, 2.86895711e-11,2.86432182e-11])
 stdrmsxh1=np.array([2.43115790e-08, 4.27852354e-09, 6.11021526e-10, 4.96921188e-11, 7.77078504e-12, 4.26545804e-12, 9.22958257e-13, 5.57187747e-13, 5.45444269e-13])
@@ -27,12 +27,14 @@ plt.fill_between(orders, rmsxh1_5-stdrmsxh1_5, rmsxh1_5+stdrmsxh1_5, alpha=0.1, 
 plt.errorbar(orders,rmsxh1,  yerr=stdrmsxh1,  fmt="o-",  capsize=4, label="h=1/m", color=colors[2])
 plt.fill_between(orders, rmsxh1-stdrmsxh1, rmsxh1+stdrmsxh1, alpha=0.1, color=colors[2])
 
-plt.errorbar(orders,rmsxh01, yerr=stdrmsxh01,fmt="o-", capsize=4, label="h=0.01/m", color=colors[5])
+plt.errorbar(orders,rmsxh08, yerr=stdrmsxh08,fmt="o-", capsize=4, label="h=0.8/m", color=colors[3])
+plt.fill_between(orders, rmsxh08-stdrmsxh08, rmsxh08+stdrmsxh08, alpha=0.1, color=colors[3])
+plt.errorbar(orders,rmsxh01, yerr=stdrmsxh01,fmt="o-", capsize=4, label="h=0.1/m", color=colors[5])
 plt.fill_between(orders, rmsxh01-stdrmsxh01, rmsxh01+stdrmsxh01, alpha=0.1, color=colors[5])
-
+plt.title("Convergence for different curvature values")
 plt.yscale("log")
 plt.xlabel("# terms in the expansion")
-plt.ylabel("mean RMS x [m]")
+plt.ylabel("mean RMS x [m] disagreement")
 plt.grid(True)
 plt.legend()
 plt.show()
