@@ -6,7 +6,7 @@ import sympy as sp
 import pandas as pd
 from scipy.interpolate import PchipInterpolator
 a_curved = [0,]
-b_curved = [2, 0.02]
+b_curved = [0.8, 0.02]
 h= b_curved[0]# considering normalization B/Brho=1/rho=h            =1. if checking for a drift
 print("curvature h[m^-1]: ", h, "radius of curvature [m]: ", 1/h)
 #I want to track protons of given kinetic energy
