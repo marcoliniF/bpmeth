@@ -165,14 +165,6 @@ def compute_rms_curved_for_order(maxordx, sol_strfromphi, sol_curved, make_parti
         x_curv = sa.y[0]
 
         # --- transform straight-frame trajectory into curved frame ---
-        # from:
-        #   sbar = (rho + x) * sin(s/rho)
-        #   xbar = -rho + (rho + x) * cos(s/rho)
-        #
-        # one gets:
-        #   rho + x = sqrt((rho + xbar)^2 + sbar^2)
-        #   s = rho * atan2(sbar, rho + xbar)
-
         x_curv_from_str = np.sqrt((rho + xbar_str)**2 + sbar_str**2) - rho
         s_curv_from_str = rho * np.arctan2(sbar_str, rho + xbar_str)
 
@@ -190,14 +182,12 @@ def compute_rms_curved_for_order(maxordx, sol_strfromphi, sol_curved, make_parti
         idx_curv = np.argsort(s_curv)
         s_curv_sorted = s_curv[idx_curv]
         x_curv_sorted = x_curv[idx_curv]
-
         x_curv_common = PchipInterpolator(s_curv_sorted, x_curv_sorted)(s_common)
 
         # interpolate transformed straight->curved tracking
         idx_str = np.argsort(s_curv_from_str)
         s_from_str_sorted = s_curv_from_str[idx_str]
         x_from_str_sorted = x_curv_from_str[idx_str]
-
         x_from_str_common = PchipInterpolator(s_from_str_sorted, x_from_str_sorted)(s_common)
 
         # --- RMS difference in curved frame ---
@@ -208,6 +198,7 @@ def compute_rms_curved_for_order(maxordx, sol_strfromphi, sol_curved, make_parti
         print(f"[order {maxordx}] particle {i}: RMS_x_curved = {rms_x:.3e} m")
 
     mean_rms_x = np.mean(rms_x_list) if rms_x_list else np.nan
+    std_rms_x = np.std(rms_x_list, ddof=1) if len(rms_x_list) > 1 else np.nan
 
     if make_particle_plots:
         plt.figure()
@@ -227,9 +218,10 @@ def compute_rms_curved_for_order(maxordx, sol_strfromphi, sol_curved, make_parti
     return {
         "maxordx": maxordx,
         "mean_rms_x": mean_rms_x,
+        "std_rms_x": std_rms_x,
         "rms_x_list": rms_x_list,
     }
-orders = [2, 3, 4, 5, 6, 7]
+orders = [2, 3, 4, 5, 6, 7,8,9,10]
 results = []
 results_fromcurved = []
 for ordx in orders:
